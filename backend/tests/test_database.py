@@ -1,34 +1,10 @@
-"""Seed a throwaway PostgreSQL database and verify it.
+"""Seeded throwaway database (see conftest.py): counts, demo IDs, reproducible reseed."""
 
-Uses TEST_DATABASE_URL (never DATABASE_URL, so running tests cannot wipe your dev
-data). Skipped when TEST_DATABASE_URL is unset or unreachable.
-"""
-
-import pytest
-from sqlalchemy import func, select, text
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_test_database_url
-from app.db.session import make_engine
 from app.models import GroundTruthLabel, Machine, Operator, Task, Telemetry
 from simulator.seed import seed, verify
-
-
-@pytest.fixture(scope="module")
-def engine():
-    url = get_test_database_url()
-    if not url:
-        pytest.skip("TEST_DATABASE_URL not set")
-    eng = make_engine(url)
-    try:
-        with eng.connect() as conn:
-            conn.execute(text("SELECT 1"))
-    except OperationalError as exc:
-        pytest.skip(f"test database unreachable: {exc.orig}")
-    seed(eng)
-    yield eng
-    eng.dispose()
 
 
 def test_verification_passes(engine):

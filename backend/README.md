@@ -3,20 +3,26 @@
 **Owner:** Backend developer
 **Stack:** Python, FastAPI, PostgreSQL (SQLAlchemy 2), WebSockets
 
-> Status: data foundation. PostgreSQL schema, deterministic synthetic dataset,
-> seed/reset/verify command, and `GET /health`. The feature APIs (tasks, telemetry,
-> safety, incidents, training), replay and WebSockets are the next step.
+> Status: data foundation + all RED REST APIs (operators, tasks, telemetry, safety,
+> incidents with telemetry snapshot, training, insights, unified ML input, weather with
+> synthetic fallback). Telemetry replay and WebSockets are the next step. API contracts:
+> [`docs/api/README.md`](../docs/api/README.md).
 
 ## Structure
 
 | Path                           | Purpose                                                              |
 | ------------------------------ | -------------------------------------------------------------------- |
 | `app/main.py`                  | FastAPI app entrypoint (`GET /health`).                              |
-| `app/api/`                     | HTTP route handlers (routers). Empty for now.                        |
+| `app/api/`                     | HTTP routers, one per area (operators, tasks, telemetry, …).         |
 | `app/models/`                  | SQLAlchemy ORM models: the 10 tables (see below).                    |
 | `app/schemas/`                 | Request/response schemas (Pydantic).                                 |
-| `app/services/safety_service.py` | Deterministic safety rules (seatbelt, idle, proximity bands).      |
-| `app/websocket/`               | Realtime WebSocket endpoints and connection management.              |
+| `app/services/safety_service.py` | Deterministic safety rules (seatbelt, proximity, idle, unattended). |
+| `app/services/telemetry_service.py` | Telemetry queries + live store (60 s Black Box buffer). Replay feeds `live_store.ingest()`. |
+| `app/services/weather_service.py` | Weather interface: synthetic by default, optional live API with fallback. |
+| `app/services/insights_service.py` | Operator metrics + deterministic habit detection.                |
+| `app/services/*`               | Tasks, incidents, training, safety state, ML input payload.          |
+| `app/core/errors.py`           | Uniform JSON errors (no SQL/tracebacks to clients).                  |
+| `app/websocket/events.py`      | WebSocket event payload builders (transport comes with replay).      |
 | `app/db/session.py`            | Engine / session setup from `DATABASE_URL`.                          |
 | `app/db/init_db.py`            | Create or reset the schema.                                          |
 | `app/core/config.py`           | Environment configuration (`.env` loading).                          |
@@ -68,7 +74,11 @@ repo-root `.env` (first one wins):
 ```
 DATABASE_URL=postgresql+psycopg2://opassure:opassure@localhost:5432/opassure
 TEST_DATABASE_URL=postgresql+psycopg2://opassure:opassure@localhost:5432/opassure_test
+CORS_ORIGINS=http://localhost:3000
 ```
+
+Optional: `DEMO_DATE` (override "today"), `WEATHER_MODE=live` + `WEATHER_API_URL`
+(external weather; falls back to synthetic automatically on any failure).
 
 ### 3. Create / reset the database
 
@@ -97,6 +107,9 @@ uvicorn app.main:app --reload
 ### 6. Open Swagger
 
 - Swagger UI: http://localhost:8000/docs
+- Demo path: `/tasks/today?operator_id=OP1001` → `/tasks/T001` → `/telemetry/latest/EXC001`
+  → `/safety/EXC001` → `POST /incidents` → `/training/recommendations/OP1001` →
+  `/ml-input/operator/OP1001`
 - Health: http://localhost:8000/health → `{"status": "ok", "database": "ok"}`
   (`database` is `not_configured` / `unavailable` when the DB is missing).
 

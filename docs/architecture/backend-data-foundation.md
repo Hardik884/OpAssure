@@ -34,8 +34,8 @@ Columns **added** beyond the handover field list (additive only, nothing renamed
 - `avg_cycle_time_s` / `cycle_time_std` are null when the interval was all idle.
 - `idle_reason`: null, `truck_wait` (legitimate) or `avoidable` (operator).
 - `seatbelt_status`: `fastened` / `unfastened`.
-- `safety_alert`: null or `seatbelt_unfastened_while_moving` (critical),
-  `possible_unattended_machine` (warning), `avoidable_idle` (warning) — computed
+- `safety_alert`: null or `seatbelt` (critical), `unattended_machine` (warning),
+  `avoidable_idle` (warning) — the most severe alert for that sample, computed
   by `app/services/safety_service.py`, the same rules replay will use.
 - `tasks.estimated_time_min` is a naive plan (standard cycle time + 15%); it is
   the baseline the ML ETA should beat. `actual_time_min` is null until completed.

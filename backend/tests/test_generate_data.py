@@ -42,7 +42,7 @@ def test_demo_entities(data):
     rows = [r for r in data["telemetry"] if r["task_id"] == demo.DEMO_TASK_ID]
     assert 52 <= len(rows) <= 58  # ETA story: plan 45 -> actual 52-58 min
     alerts = [r["safety_alert"] for r in rows]
-    assert "seatbelt_unfastened_while_moving" in alerts
+    assert "seatbelt" in alerts
 
 
 def test_ids_unique_and_referentially_sound(data):
