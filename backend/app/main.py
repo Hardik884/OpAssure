@@ -1,13 +1,58 @@
-"""OpAssure backend entrypoint.
+"""OpAssure backend entrypoint: REST API for the frontend and the AI/ML layer.
 
-Only a health check is exposed for now. Feature routers will be added under app/api/.
+Contracts are documented in docs/api/README.md; Swagger UI is served at /docs.
 """
 
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
-app = FastAPI(title="OpAssure API", version="0.1.0")
+from app.api import demo, incidents, machines, ml_input, operators, safety, tasks, telemetry, training, weather
+from app.core.config import get_cors_origins
+from app.core.errors import register_error_handlers
+from app.db.session import DatabaseNotConfiguredError, get_engine
+from app.websocket import routes as ws_routes
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 
-@app.get("/health")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    yield
+    await demo.replay_engine.stop()  # clean shutdown of a running replay
+
+
+app = FastAPI(title="OpAssure API", version="0.3.0", lifespan=lifespan)
+
+cors_origins = get_cors_origins()
+if cors_origins:
+    app.add_middleware(CORSMiddleware, allow_origins=cors_origins, allow_credentials=True,
+                       allow_methods=["*"], allow_headers=["*"])
+else:
+    logger.warning("CORS_ORIGINS is not set; browser clients on other origins will be blocked")
+
+register_error_handlers(app)
+for module in (operators, machines, tasks, telemetry, safety, incidents, training, weather, ml_input, demo,
+               ws_routes):
+    app.include_router(module.router)
+
+
+@app.get("/health", tags=["health"])
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    """API liveness plus database reachability (ok | not_configured | unavailable)."""
+    try:
+        with get_engine().connect() as conn:
+            conn.execute(text("SELECT 1"))
+        database = "ok"
+    except DatabaseNotConfiguredError:
+        database = "not_configured"
+    except SQLAlchemyError as exc:
+        logger.warning("Database health check failed: %s", exc)
+        database = "unavailable"
+    return {"status": "ok", "database": database}
