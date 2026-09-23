@@ -3,12 +3,15 @@
 **Owner:** AI/ML developer
 **Stack:** Python, pandas, numpy, scikit-learn
 
-> **Status:** data foundation, ETA / Operator Twin, and the Behaviour + Safety
-> Intelligence subsystem (Habit Radar, Idle Shield, Focus Battery, risk
-> intelligence, machine-vs-operator diagnosis) are built and tested.
-> Just-in-Time Micro Training recommendations, LLM explanations, and the
-> Pre-Task Threat Briefing are **not** implemented yet — that's the next step.
-> See `CLAUDE.md` §11 for ML principles and §8 for the priority system.
+> **Status:** the ML layer is complete and integration-ready. Data foundation,
+> ETA / Operator Twin, Behaviour + Safety Intelligence (Habit Radar, Idle
+> Shield, Focus Battery, risk intelligence, machine-vs-operator diagnosis),
+> and the final intelligence layer (Just-in-Time Micro Training, training
+> effectiveness, instructor escalation, Pre-Task Threat Briefing, structured
+> explanations, and the unified `generate_operator_state()` / `update_operator_state()`
+> entry points) are all built and tested — see `ml/docs/integration.md` for
+> the backend handoff. See `CLAUDE.md` §11 for ML principles and §8 for the
+> priority system.
 
 ## What this is
 
@@ -286,6 +289,118 @@ The gap is a genuinely harder, more realistic evaluation, not a coding
 defect — and it never compromises the actually-required guarantee: the
 truck-wait no-blame rate above, which is exactly 0%.
 
+## Final intelligence layer
+
+```
+src/training/
+  catalog.py            TRAINING_CATALOG (6 clips) + get_clip_for_trigger()
+  recommend.py            recommend_training(), get_training_recommendation()
+  effectiveness.py         evaluate_training_effect(), get_training_outcome()
+  escalation.py             check_escalation()
+
+src/safety/threat_briefing.py   generate_threat_briefing()
+
+src/intelligence/
+  explanations.py          explain_eta(), explain_operator_twin(), explain_habit(),
+                             explain_idle(), explain_focus(), explain_risk(),
+                             explain_diagnosis(), explain_training(), explain_threat_briefing()
+  operator_state.py        generate_operator_state() — the unified entry point
+  realtime.py                update_operator_state() — fast, no-retraining live updates
+
+src/evaluation/intelligence_eval.py
+  evaluate_training_recommendation_relevance(), evaluate_training_effectiveness(),
+  evaluate_threat_briefing_correctness()
+```
+
+**Backend integration:** see [`ml/docs/integration.md`](docs/integration.md)
+— the one document a backend developer needs, covering entry points, JSON
+schemas, error handling, and model loading without reading every file.
+
+### Just-in-Time Micro Training
+
+`recommend_training()` is a pure rule function over already-computed
+signals (Habit Radar, diagnosis, the Operator Twin, a proximity-event
+count) — it never recomputes another module's logic itself.
+`get_training_recommendation()` is the real-data convenience wrapper that
+calls those modules and delegates to it. **Never recommends for a single
+anomaly**: each trigger reuses an existing repetition guarantee (Habit
+Radar's `is_habit`, diagnosis's multi-entity evidence requirement) or a new
+evidence floor in `config.py` (`TRAINING_MIN_PROXIMITY_EVENTS`,
+`TRAINING_MIN_TASKS_FOR_SENSITIVITY`). Only the single highest-priority
+qualifying trigger is returned (safety triggers outrank efficiency ones),
+mapped to one clip from the 6-item catalog. No LLM.
+
+### Training effectiveness + instructor escalation
+
+`evaluate_training_effect()` compares a "lower is better" behaviour metric
+over the `TRAINING_OBSERVATION_WINDOW` (5) tasks/events before vs. after a
+training event. **With fewer than 5 post-training observations, it returns
+`status: "insufficient_evidence"` and `improvement: null` — never a
+fabricated number.** Against the real generated dataset, the full range of
+outcomes actually occurs across the seatbelt-habit operator's 6 training
+checkpoints: `improving`, `no_change`, `worsening`, and
+`insufficient_evidence` (both "too early" and "no more data left") all show
+up — see the table in "Evaluating against ground truth" below.
+`check_escalation()` only escalates on a **full** window showing
+`"worsening"` or `"no_change"` — never on `insufficient_evidence`, and never
+from a single bad observation.
+
+### Pre-Task Threat Briefing
+
+`generate_threat_briefing()` ranks fact-grounded candidate risks (a
+detected habit, recent safety alerts, repeated site near-misses, a machine
+degradation trend from the existing feature pipeline, weather scaled by the
+operator's own Twin sensitivities, a historical afternoon effect) by
+severity and returns the top 3. **An empty list is the honest "no
+meaningful risk" answer** — never a fabricated placeholder risk.
+
+### Structured explanations
+
+Every `explain_*()` function in `src/intelligence/explanations.py` is a
+thin adapter over a module's own already-computed reason/factor fields —
+none of them recompute anything or invent a percentage. No LLM is used; if
+an LLM-based narration layer is added later, these structured results are
+what it should be built on top of, and remain the deterministic fallback.
+
+### Unified operator intelligence
+
+`generate_operator_state(operator_id, machine_id, task_id, current_context=None)`
+orchestrates every module above into one result (see the schema in
+`docs/integration.md` §4) — it contains no model/rule logic of its own.
+`update_operator_state(previous_state, new_telemetry, ...)` is the
+realtime path: dynamic ETA, remaining work, risk, and Focus are always
+recomputed from the new row (cheap); the habit summary only rescans the
+fleet when the new row actually completes a truck-wait transition (rare);
+**the ETA model, the Operator Twin, and every loaded table are reused from
+the cached `_context`** — nothing is retrained or reloaded from disk.
+
+### Evaluating against ground truth (extended)
+
+`run_intelligence_pipeline.py`'s evaluation section adds, on top of the
+existing behaviour evaluation:
+
+| Check | Result |
+|---|---|
+| Seatbelt-habit operator (`OP1005`) gets a training recommendation | `recommended=True`, `trigger_type=seatbelt_habit` |
+| Inefficient operator (`OP1010`) has a real fuel finding | confirmed present (diagnosis correctly flags them) |
+| A "quiet" operator (lowest habit frequency in the fleet) isn't over-flagged | confirmed not flagged for `seatbelt_habit` |
+| Threat briefing weather/operator/machine-driven cases | all 3 structured checks pass |
+| `OP1005`'s 6 real training checkpoints | full range observed: `improving`, `no_change`, `worsening`, `insufficient_evidence` (see below) |
+
+Per-checkpoint detail for `OP1005` (seatbelt metric, chronological):
+
+| Checkpoint | Before | After | Status |
+|---|---|---|---|
+| 1 | n/a (first-ever opportunity) | 0.20 | `no_baseline` |
+| 2 | 0.20 | 0.00 | **improving** |
+| 3 | 0.00 | 0.00 | `no_change` → escalate |
+| 4 | 0.00 | 0.40 | `worsening` → escalate |
+| 5 | 0.40 | 0.60 | `worsening` → escalate |
+| 6 (most recent) | 0.60 | n/a (no tasks left in the window) | `insufficient_evidence` |
+
+This is only what the synthetic data supports — **not a claim of
+human-level or real-world training effectiveness**.
+
 ## How to run everything
 
 ```bash
@@ -311,14 +426,19 @@ python run_eta_pipeline.py --demo-only
 # ground-truth evaluation report + the OP1001/EXC001/T001 demo:
 python run_behaviour_pipeline.py
 
+# Run the unified intelligence layer (training, threat briefing, the full
+# generate_operator_state() report) + a realtime-update demonstration:
+python run_intelligence_pipeline.py
+
 # Run the test suite:
 python -m pytest tests/ -v
 ```
 
 `run_pipeline.py` prints a summary (row counts per table, feature matrix
 shape, split sizes, and a demo-scenario check) and exits non-zero on any
-error — safe to wire into `/demo-check`. `run_eta_pipeline.py` and
-`run_behaviour_pipeline.py` do the same for their respective subsystems.
+error — safe to wire into `/demo-check`. `run_eta_pipeline.py`,
+`run_behaviour_pipeline.py`, and `run_intelligence_pipeline.py` do the same
+for their respective subsystems.
 
 ### Inference interface (for the backend)
 
@@ -436,9 +556,36 @@ Running `python run_behaviour_pipeline.py` prints, for the demo scenario
    EXC002 flagged (machine, +29% fuel across 20 operators)
 ```
 
+### Example: OP1001 / EXC001 / T001 (Unified Intelligence)
+
+Running `python run_intelligence_pipeline.py` prints the full report
+(operator twin, current/dynamic ETA, remaining work, risk, habits, idle
+analysis, focus, training, threat brief, explanations) plus a realtime
+progression. Illustrative excerpt:
+
+```
+TRAINING
+  recommended: True
+  clip_id: TR_SWING_ZONE
+  reason: 10 recorded proximity/near-miss events for this operator.
+
+PRE-TASK THREAT BRIEF
+  [{'priority': 1, 'risk': "Workers have repeatedly entered this
+    machine's swing zone recently.", 'source': 'site'}]
+
+REALTIME UPDATE — telemetry rows applied one at a time (no model retraining)
+  step 1: dynamic_eta.eta_point=26.5  buckets_remaining=53  risk_level=low
+  step 2: dynamic_eta.eta_point=27.4  buckets_remaining=41  risk_level=low
+  step 3: dynamic_eta.eta_point=27.4  buckets_remaining=29  risk_level=low
+  step 4: dynamic_eta.eta_point=27.2  buckets_remaining=17  risk_level=low
+```
+
+See [`docs/integration.md`](docs/integration.md) for the full JSON
+schema and how the backend should call this.
+
 ## Tests
 
-`ml/tests/` (83 tests) covers:
+`ml/tests/` (123 tests) covers:
 
 - **`test_synthetic.py`** — generation is deterministic (same seed -> byte-identical
   output), every table is non-empty, demo IDs exist and resolve correctly,
@@ -489,9 +636,30 @@ Running `python run_behaviour_pipeline.py` prints, for the demo scenario
   inefficient operator (`OP1010`) are both correctly flagged with zero false
   positives, and raising the minimum-entity bar shrinks results without
   erroring.
+- **`test_training.py`** — recommendation triggers correctly per pattern
+  type (habit, proximity, fuel, wet-weather, heat), never triggers on weak
+  evidence, correctly prioritizes safety over efficiency, and effectiveness
+  tracking/escalation covers incomplete windows, improving, no-change, and
+  worsening cases (plus a real-data sanity check across `OP1005`'s actual
+  checkpoints).
+- **`test_threat_briefing.py`** — each risk source (weather, operator,
+  machine, site) is correctly triggered, multiple risks rank by severity,
+  the top-3 limit is enforced, priorities are sequential, and the no-risk
+  case returns an honest empty list.
+- **`test_operator_state.py`** — the complete output structure, that its
+  numbers match calling the underlying modules directly (no orchestration
+  drift), a clear error for an unknown task, a genuinely pre-task state
+  (full remaining work) by default, and safe handling of missing optional
+  context.
+- **`test_realtime.py`** — ETA/risk/focus/habit updates from new telemetry,
+  that the habit summary only rescans the fleet on a real transition (not
+  every tick), that the cached ETA model object is reused (proof nothing
+  retrains), and that remaining work strictly decreases across sequential
+  updates.
 
 ## Next step (not done here)
 
-Just-in-Time Micro Training recommendations, LLM-generated explanations, and
-the Pre-Task Threat Briefing — intentionally out of scope for this step per
-the task instructions.
+Nothing from this specification remains — the ML layer is complete and
+integration-ready. Future work (not requested here) would be actual
+frontend/backend wiring, and any LLM-based narration layered on top of the
+structured explanations in `src/intelligence/explanations.py`.

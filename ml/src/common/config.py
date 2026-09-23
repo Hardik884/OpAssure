@@ -135,3 +135,30 @@ RISK_LEVEL_BANDS = (("critical", 85), ("high", 60), ("medium", 30))  # else "low
 
 DIAGNOSIS_MIN_DISTINCT_ENTITIES = 3  # need evidence across >= this many operators/machines
 DIAGNOSIS_ELEVATED_RATIO = 1.15  # 15% above fleet average fuel/moving-min to flag
+
+# ---------------------------------------------------------------------------
+# Just-in-Time Micro Training
+# ---------------------------------------------------------------------------
+
+# Evidence floors before a "repeated" pattern (not a single anomaly) can
+# trigger a training recommendation.
+TRAINING_MIN_PROXIMITY_EVENTS = 3  # near-misses for this operator before flagging proximity
+TRAINING_MIN_TASKS_FOR_SENSITIVITY = 10  # operator needs this many tasks before a Twin sensitivity counts as evidence
+TRAINING_SENSITIVITY_THRESHOLD = 0.15  # rain/heat sensitivity above this is "meaningful"
+TRAINING_AFTERNOON_EFFECT_THRESHOLD = -0.10  # afternoonEffect below this is "meaningful"
+
+# Training effectiveness observation window (the spec's "next FIVE relevant
+# tasks/events") and the bar for calling an observed change "meaningful".
+TRAINING_OBSERVATION_WINDOW = 5
+TRAINING_MEANINGFUL_IMPROVEMENT = 0.15  # before-after drop >= this counts as "improving"
+TRAINING_WORSENING_THRESHOLD = -0.05  # before-after drop <= this counts as "worsening"
+
+# Instructor escalation
+ESCALATION_SESSION_MINUTES = 20
+
+# ---------------------------------------------------------------------------
+# Pre-Task Threat Briefing
+# ---------------------------------------------------------------------------
+
+THREAT_BRIEFING_TOP_N = 3
+THREAT_BRIEFING_SITE_LOOKBACK_DAYS = 14  # recent near-misses at this machine, within this window

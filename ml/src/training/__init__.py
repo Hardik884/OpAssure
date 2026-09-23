@@ -1,7 +1,11 @@
-"""Operator training / coaching recommendation models.
+"""Just-in-Time Micro Training: recommendation, effectiveness tracking, and
+instructor escalation.
 
-Not implemented yet. Will combine `src.anomaly` outputs (which pattern was
-detected) with `data/synthetic/training_events.csv` (what training already
-happened) to recommend Just-in-Time Micro Training. No models yet, per this
-step's scope (ML foundation only).
+- `catalog.py` — the internal training clip catalog.
+- `recommend.py` — `recommend_training()` / `get_training_recommendation()`,
+  mapping detected Habit Radar / diagnosis / Operator Twin signals to a clip.
+- `effectiveness.py` — `evaluate_training_effect()` / `get_training_outcome()`,
+  comparing behaviour before vs. after a training event.
+- `escalation.py` — `check_escalation()`, deterministic instructor escalation
+  when a full observation window shows no improvement.
 """
