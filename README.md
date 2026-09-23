@@ -2,7 +2,7 @@
 
 OpAssure is an intelligent operator assistant for Caterpillar (CAT) machinery, being built for the Caterpillar Hackathon. It aims to give equipment operators a single real-time companion that plans their daily work, keeps them safe on site, coaches them to improve, flags unusual machine or operator behaviour, and estimates how long each task will take — driven by machine telemetry, operator history, and site context.
 
-> **Status:** Repository initialization only. No application features are implemented yet.
+> **Status:** Backend data foundation in place (PostgreSQL schema, deterministic synthetic dataset, seed/reset, `/health`). Feature APIs, replay, frontend and ML are not implemented yet.
 
 ## Problem
 
