@@ -1,0 +1,89 @@
+# =========================================================
+# OpAssure monorepo .gitignore
+# =========================================================
+
+# ---------- Environment / secrets ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ---------- Node.js / Next.js ----------
+node_modules/
+.next/
+out/
+.turbo/
+.vercel/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+coverage/
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.ipynb_checkpoints/
+
+# ---------- Python virtual environments ----------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---------- Build artifacts ----------
+build/
+dist/
+*.log
+
+# ---------- ML artifacts ----------
+mlruns/
+wandb/
+ml/models/*
+!ml/models/.gitkeep
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx
+*.h5
+
+# ---------- Data (large / local) ----------
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# ---------- Database / local files ----------
+*.db
+*.sqlite
+*.sqlite3
+pgdata/
+postgres-data/
+*.dump
+
+# ---------- Editors / OS ----------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
