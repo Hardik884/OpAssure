@@ -23,13 +23,22 @@ export function Card({
   children,
   className = "",
   padded = true,
+  rounded = "sm",
+  tone = "light",
+  ...rest
 }: {
   children: ReactNode;
   className?: string;
   padded?: boolean;
-}) {
+  /** "sm" (default, existing sharp/industrial radius) or "lg" for hero surfaces (ETA card, modals). */
+  rounded?: "sm" | "lg";
+  /** "light" (default, white/ink-on-white) or "dark" (ink surface/white text) for a hero panel like Active Task's ETA card. */
+  tone?: "light" | "dark";
+} & HTMLAttributes<HTMLElement>) {
+  const radius = rounded === "lg" ? "rounded-panel" : "rounded-industrial";
+  const surface = tone === "dark" ? "border-ink-950 bg-ink-950 text-white" : "border-ink-950 bg-white text-ink-950";
   return (
-    <section className={`rounded-industrial border-2 border-ink-950 bg-white ${padded ? "p-4 sm:p-5" : ""} ${className}`}>
+    <section {...rest} className={`${radius} border-2 ${surface} ${padded ? "p-4 sm:p-5" : ""} ${className}`}>
       {children}
     </section>
   );

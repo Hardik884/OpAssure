@@ -13,8 +13,14 @@
  * never rename fields inside components (CLAUDE.md §10).
  */
 import { API_URL, USE_MOCK_DATA } from "@/config/env";
-import { mockOperatorContext, mockOperatorInsight, mockSafetyEvents, mockTask } from "@/lib/mockData";
-import type { OperatorContext, OperatorInsight, SafetyEvent, Task } from "@/types";
+import {
+  mockActiveTaskInsightByTask, mockCriticalProximityAlert, mockMissionTasks, mockOperatorContext,
+  mockOperatorInsight, mockSafetyEvents, mockTask, mockThreatBriefingByTask,
+} from "@/lib/mockData";
+import type {
+  ActiveTaskInsight, Incident, IncidentInput, MissionTask, OperatorContext, OperatorInsight, SafetyEvent, Task,
+  ThreatBriefingItem,
+} from "@/types";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -67,6 +73,59 @@ export const api = {
     if (USE_MOCK_DATA) return mockResolve(mockOperatorInsight);
     // TODO(real API): GET /operator/{id}/insights; map to OperatorInsight here.
     return request<OperatorInsight>("/operator/insight");
+  },
+
+  /** Mission Board rows for today, in schedule order. */
+  getTodayTasks(): Promise<MissionTask[]> {
+    if (USE_MOCK_DATA) return mockResolve(mockMissionTasks);
+    // TODO(real API): GET /tasks/today?operator_id=OP1001; map snake_case fields
+    // (task_id, task_type, estimated_time_min, start_time, ...) to MissionTask here.
+    return request<MissionTask[]>("/tasks/today");
+  },
+
+  /** A single task by id (Mission Board's "VIEW" action). */
+  getTask(taskId: string): Promise<Task | undefined> {
+    if (USE_MOCK_DATA) return mockResolve(mockMissionTasks.find((t) => t.taskId === taskId));
+    // TODO(real API): GET /tasks/{id}; map fields to Task here.
+    return request<Task>(`/tasks/${taskId}`);
+  },
+
+  /** Pre-Task Threat Briefing facts for a task (empty if there's nothing to brief). */
+  getThreatBriefing(taskId: string): Promise<ThreatBriefingItem[]> {
+    if (USE_MOCK_DATA) return mockResolve(mockThreatBriefingByTask[taskId] ?? []);
+    // TODO(real API): once the backend exposes a briefing endpoint, map it here.
+    return request<ThreatBriefingItem[]>(`/tasks/${taskId}/threat-briefing`);
+  },
+
+  /** Supplementary Active Task facts (ETA reasons, truck estimate). */
+  getActiveTaskInsight(taskId: string): Promise<ActiveTaskInsight | null> {
+    if (USE_MOCK_DATA) return mockResolve(mockActiveTaskInsightByTask[taskId] ?? null);
+    // TODO(real API): derive from GET /ml-input/operator/{id} (eta_update reason, etc.).
+    return request<ActiveTaskInsight>(`/tasks/${taskId}/insight`);
+  },
+
+  /** Records an operator-reported incident. Always returns a telemetry-attached record. */
+  recordIncident(input: IncidentInput): Promise<Incident> {
+    if (USE_MOCK_DATA) {
+      const incident: Incident = {
+        ...input,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        hasTelemetryContext: true,
+      };
+      return mockResolve(incident);
+    }
+    // TODO(real API): POST /incidents with { operator_id, machine_id, task_id, type: eventType,
+    // description: note }; map the { snapshot_size, telemetry_snapshot } response back here.
+    return request<Incident>("/incidents", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  /**
+   * Demo-only: stands in for a live WS `proximity_alert` event until realtime
+   * integration lands. Returns the frozen critical example every time.
+   */
+  triggerDemoProximityAlert(): Promise<SafetyEvent> {
+    return mockResolve(mockCriticalProximityAlert, 50);
   },
 };
 

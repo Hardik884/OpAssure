@@ -43,6 +43,9 @@
   --color-critical-bg: #fde8e8;
 
   --radius-industrial: 0.25rem;
+  /* A touch more roundness for larger surfaces (hero cards, modals) — still flat/bordered,
+     never a soft floating look. Small chips/badges keep --radius-industrial. */
+  --radius-panel: 0.75rem;
 }
 
 :root {

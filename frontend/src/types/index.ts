@@ -91,3 +91,67 @@ export interface OperatorContext {
 
 /** Primary navigation destinations for the operator shell. */
 export type NavKey = "mission" | "task" | "safety" | "training" | "insights" | "history";
+
+/* ================================================================
+ * Mission Board / Active Task / Incident types (Prompt 2)
+ *
+ * These are NOT part of the frozen handover contracts above (Task,
+ * SafetyEvent, OperatorInsight) — they're additive shapes this app needs.
+ * Where one wraps a frozen type (MissionTask), it only ever ADDS fields,
+ * never renames or removes one of the frozen ones.
+ * ================================================================ */
+
+/**
+ * A Mission Board row: the frozen Task shape plus its scheduled start time.
+ * `startTime` is presentation-only (e.g. "08:30") — the real backend's
+ * equivalent is `start_time` on GET /tasks/today, mapped in lib/api.ts later.
+ */
+export interface MissionTask extends Task {
+  startTime: string;
+}
+
+/**
+ * One fact in the Pre-Task Threat Briefing. Presented as-is — the frontend
+ * does not derive or calculate these, only renders what the backend/AI layer
+ * supplies (mocked for now).
+ */
+export interface ThreatBriefingItem {
+  id: string;
+  severity: SafetyStatus;
+  title: string;
+  detail: string;
+}
+
+/**
+ * Supplementary Active Task facts (why the ETA moved, a rough truck count).
+ * Backend/AI-provided; the frontend never computes these.
+ */
+export interface ActiveTaskInsight {
+  taskId: string;
+  approxTrucksRemaining: number;
+  etaReasons: string[];
+}
+
+/** Event categories an operator can log from the Active Task screen. */
+export type IncidentEventType = "proximity" | "seatbelt" | "machine" | "ground" | "other";
+
+/**
+ * Not a frozen handover contract (no Incident shape was specified) — kept
+ * close to the real backend's POST /incidents body (`operator_id`,
+ * `machine_id`, `task_id`, `type`, `severity`, `description`) so wiring the
+ * real endpoint later is a field-name mapping in lib/api.ts, not a redesign.
+ */
+export interface IncidentInput {
+  eventType: IncidentEventType;
+  note: string;
+  taskId: string;
+  operatorId: string;
+  machineId: string;
+}
+
+export interface Incident extends IncidentInput {
+  id: string;
+  createdAt: string;
+  /** The backend attaches a recent-telemetry snapshot to every incident (its "Black Box"). */
+  hasTelemetryContext: boolean;
+}

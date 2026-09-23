@@ -13,12 +13,14 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 import { api, errorMessage } from "@/lib/api";
 import { mockOperatorContext } from "@/lib/mockData";
-import type { OperatorContext } from "@/types";
+import type { OperatorContext, SafetyStatus } from "@/types";
 
 interface OperatorContextValue {
   context: OperatorContext;
   loading: boolean;
   error: string | null;
+  /** Lets a screen (e.g. Active Task's demo proximity alert) update the app-wide safety chip. */
+  setSafetyStatus: (status: SafetyStatus) => void;
 }
 
 const Context = createContext<OperatorContextValue | null>(null);
@@ -47,7 +49,9 @@ export function OperatorProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  return <Context.Provider value={{ context, loading, error }}>{children}</Context.Provider>;
+  const setSafetyStatus = (status: SafetyStatus) => setContext((prev) => ({ ...prev, safetyStatus: status }));
+
+  return <Context.Provider value={{ context, loading, error, setSafetyStatus }}>{children}</Context.Provider>;
 }
 
 export function useOperatorContext(): OperatorContextValue {
