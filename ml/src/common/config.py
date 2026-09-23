@@ -20,7 +20,10 @@ PROCESSED_DIR = DATA_DIR / "processed"
 SYNTHETIC_DIR = DATA_DIR / "synthetic"
 GROUND_TRUTH_DIR = DATA_DIR / "ground_truth"
 
-for _dir in (RAW_DIR, PROCESSED_DIR, SYNTHETIC_DIR, GROUND_TRUTH_DIR):
+MODELS_DIR = ML_ROOT / "models"
+ETA_MODEL_DIR = MODELS_DIR / "eta"
+
+for _dir in (RAW_DIR, PROCESSED_DIR, SYNTHETIC_DIR, GROUND_TRUTH_DIR, ETA_MODEL_DIR):
     _dir.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
@@ -70,3 +73,29 @@ SWING_ZONE_RADIUS_M = 8.0
 TRAIN_FRAC = 0.70
 VAL_FRAC = 0.15
 # remaining 0.15 is the test fraction
+
+# ---------------------------------------------------------------------------
+# ETA model / uncertainty
+# ---------------------------------------------------------------------------
+
+# Residual-quantile interval (see src/eta/train.py): eta_min/eta_max are the
+# point prediction plus the (q_low, q_high) empirical quantiles of the
+# validation-set residuals. Simple, defensible, no separate quantile model.
+ETA_RESIDUAL_QUANTILES = (0.10, 0.90)
+
+# Recent-telemetry window used by dynamic ETA to detect a cycle-time change.
+RECENT_TELEMETRY_ROWS = 3
+
+# ---------------------------------------------------------------------------
+# Operator Twin
+# ---------------------------------------------------------------------------
+
+# Empirical-Bayes-style shrinkage strength: an operator's estimate is blended
+# with the fleet average as `n / (n + k)` operator-weight. Small k = trust
+# operator data sooner; large k = need more history before trusting it.
+OPERATOR_TWIN_SHRINKAGE_K = 5
+
+# Fallback afternoon-hour threshold when an operator's own fatigue_start_hour
+# isn't available for some reason (it normally is — operators.csv has it).
+DEFAULT_AFTERNOON_HOUR = 13
+HEAT_TEMP_THRESHOLD_C = 30.0

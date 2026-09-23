@@ -3,9 +3,10 @@
 **Owner:** AI/ML developer
 **Stack:** Python, pandas, numpy, scikit-learn
 
-> **Status:** ML foundation only — data generation, loading, and feature engineering.
-> No models are trained yet (that's the next step). See `CLAUDE.md` §11 for ML
-> principles and §8 for the priority system this foundation supports.
+> **Status:** data foundation + the ETA / Operator Twin subsystem are built and
+> tested. Habit Radar, Idle Shield, Focus Battery, safety risk intelligence, and
+> training recommendations are **not** implemented yet — that's the next step.
+> See `CLAUDE.md` §11 for ML principles and §8 for the priority system.
 
 ## What this is
 
@@ -94,6 +95,85 @@ seed — 20 operators × 8 machines × 60 days). `data/processed/` contents are
 git-ignored (see the root `.gitignore`) since they're a reproducible build
 artifact — regenerate them any time with the command below.
 
+## ETA + Operator Twin subsystem
+
+```
+src/eta/
+  train.py           trains + compares candidate models, selects the best, saves the artifact
+  model_io.py         load_eta_model() — loads the saved artifact, cached in-process
+  dataset.py           build_eta_dataset() (from the foundation step)
+  inference.py         predict_eta(), predict_personalized_eta()
+  dynamic.py            predict_dynamic_eta() — in-progress ETA updates
+  remaining_work.py    calculate_remaining_work()
+  explain.py            build_eta_explanation() — structured, rule-based ETA reasons
+
+src/operator_twin/
+  twin.py             build_operator_twin(), get_operator_profile()
+  dataset.py           build_operator_twin_dataset() (from the foundation step)
+```
+
+### Models created
+
+Two candidates are trained on the **train** split and compared on the **val**
+split (never a random shuffle — reuses `src.evaluation.splits.time_aware_split`
+as-is):
+
+| Candidate | Why it's here |
+|---|---|
+| `linear_regression` | Fast, interpretable baseline — "can we beat a straight line". |
+| `random_forest` | Captures non-linear weather/fatigue/degradation interactions without tuning. |
+
+The lower-validation-MAE candidate is selected automatically (currently
+`linear_regression` on this dataset) and saved to `ml/models/eta/model.joblib`,
+with `ml/models/eta/metadata.json` holding the feature column list, both
+candidates' metrics (val for both, test for the winner only), and the
+residual-quantile interval offsets. **Model artifacts are git-ignored** (same
+policy as `data/processed/`) — run the training command below once locally.
+
+### Personalized ETA — uncertainty approach
+
+`predict_personalized_eta()` returns an interval, not a fake single point:
+the model's point prediction plus the **empirical 10th/90th-percentile
+residuals from the validation set** (`config.ETA_RESIDUAL_QUANTILES`).
+Simple, defensible, and re-computed every time the model is retrained — no
+separate quantile-regression model needed.
+
+### Operator Twin — estimates and shrinkage
+
+`build_operator_twin()` computes, per operator, from their own task/telemetry
+history (never from the generator's hidden ground-truth parameters):
+
+| Field | Convention |
+|---|---|
+| `pace_factor` | Speed multiplier vs. fleet average. `>1` = faster, `<1` = slower. |
+| `rain_sensitivity` / `heat_sensitivity` | Non-negative — how much slower they get in rain/heat. |
+| `afternoon_effect` | `<0` = measurably slower in the afternoon (matches the planted pattern being unfavorable). |
+| `fuel_efficiency` | `>1` = uses less fuel than fleet average. |
+| `seatbelt_violation_rate` | Fraction of moving telemetry intervals with the seatbelt unbuckled. |
+
+Operators with little history are **shrunk toward the fleet average**
+(`n / (n + k)` weighting, `k = config.OPERATOR_TWIN_SHRINKAGE_K`) rather than
+overfitting to 1-2 noisy tasks. Pass `as_of=<timestamp>` to compute the twin
+using only tasks before that point — this is what `predict_dynamic_eta` would
+use in a leakage-safe setting, versus the default full-history snapshot used
+for a dashboard/demo.
+
+### Dynamic ETA
+
+`predict_dynamic_eta()` is deliberately **rule-based, not a second model** —
+it takes the elapsed time, the recent cycle time from telemetry vs. the pace
+implied by the original prediction, and the remaining buckets
+(`calculate_remaining_work()`), and recomputes the estimate. The interval
+width shrinks as the task nears completion. `trucks_remaining` is always
+`None` — the data model has no bucket-per-truck capacity field, and inventing
+one would be exactly the kind of fabricated number the project forbids.
+
+### Explanations
+
+`build_eta_explanation()` returns `{"reason": str, "factors": [...]}` with
+each factor tied to a measurable input (weather, operator pace, machine age,
+observed cycle-time change vs. plan, afternoon fatigue) — no LLM involved.
+
 ## How to run everything
 
 ```bash
@@ -108,17 +188,80 @@ python run_pipeline.py
 # Force-regenerate the synthetic dataset from scratch first:
 python run_pipeline.py --regenerate
 
+# Train the ETA model (writes ml/models/eta/model.joblib + metadata.json)
+# and run the full OP1001 / EXC001 / T001 demo:
+python run_eta_pipeline.py --train
+
+# Once a model is saved, just run the demo without retraining:
+python run_eta_pipeline.py --demo-only
+
 # Run the test suite:
 python -m pytest tests/ -v
 ```
 
 `run_pipeline.py` prints a summary (row counts per table, feature matrix
 shape, split sizes, and a demo-scenario check) and exits non-zero on any
-error — safe to wire into `/demo-check`.
+error — safe to wire into `/demo-check`. `run_eta_pipeline.py` does the same
+for training + inference.
+
+### Inference interface (for the backend)
+
+```python
+from src.eta.model_io import load_eta_model
+from src.eta.inference import predict_eta, predict_personalized_eta
+from src.eta.dynamic import predict_dynamic_eta
+from src.eta.remaining_work import calculate_remaining_work
+from src.operator_twin.twin import build_operator_twin, get_operator_profile
+```
+
+All of these take **already feature-engineered** rows (one row of
+`src.features.build_features.build_task_level_dataset()`'s output) or plain
+dicts for the twin/explanation helpers — none of them re-run the feature
+pipeline themselves, so the caller controls exactly which data feeds in.
+
+**Input schema** — one row from the task-level feature DataFrame (55 columns:
+task/operator/machine/weather static features + the `*_prior` historical
+aggregates; see "Feature pipeline" above). **Output schema** —
+`predict_personalized_eta()`:
+
+```json
+{
+  "eta_min": 14.3,
+  "eta_max": 33.4,
+  "eta_point": 22.9,
+  "original_eta": 32.5,
+  "reason": "This operator typically runs faster than average.",
+  "factors": [{"name": "weather", "impact": "positive", "detail": "clear conditions"}],
+  "buckets_remaining": 65,
+  "model_name": "linear_regression"
+}
+```
+
+`predict_dynamic_eta()` returns the same shape plus `pct_complete` and
+`cycle_time_change_pct`. `get_operator_profile()` returns the camelCase twin
+shape shown in "Operator Twin" above.
+
+### Example: OP1001 / EXC001 / T001
+
+Running `python run_eta_pipeline.py --demo-only` after training prints, for
+the deterministic demo scenario:
+
+```
+1) Baseline ETA (linear_regression): 22.9 min
+   Naive planner estimate: 32.5 min | Actual recorded outcome: 30.6 min
+2) Operator Twin for OP1001 (n_tasks=165): paceFactor=1.127, afternoonEffect=-0.126, ...
+3) Personalized ETA range: eta_min=14.3, eta_max=33.4, point=22.9
+4) Dynamic ETA (task halfway through): eta_min=23.6, eta_max=32.1, point=27.4
+   "recent cycle time is running +21% vs. plan"
+5) Main drivers: weather (positive), operator_pace (positive), machine_age (neutral)
+```
+
+(Exact numbers depend on the seed and current dataset — this is illustrative,
+not a hardcoded claim; run it yourself to see the live values.)
 
 ## Tests
 
-`ml/tests/` covers:
+`ml/tests/` (48 tests) covers:
 
 - **`test_synthetic.py`** — generation is deterministic (same seed -> byte-identical
   output), every table is non-empty, demo IDs exist and resolve correctly,
@@ -134,10 +277,24 @@ error — safe to wire into `/demo-check`.
 - **`test_splits.py`** — the time-aware split is strictly chronological with
   no overlap, roughly respects the requested fractions, and rejects invalid
   fraction combinations.
+- **`test_eta_model.py`** — training compares ≥2 candidates using the same
+  time-aware split, selection is by lowest validation MAE, MAE/RMSE/median-AE
+  are all reported, and `predict_personalized_eta()` always returns a real
+  interval (never a disguised single point).
+- **`test_operator_twin.py`** — twin shape/coverage, the shrinkage formula
+  itself (deterministic whitebox check), the fleet-average fallback for an
+  operator with zero history, that the planted inefficient operator scores
+  below fleet-average fuel efficiency, that rain-sensitivity direction
+  correlates with the generator's own (legitimate, non-hidden) operator
+  field, and that `as_of` strictly excludes tasks at/after the cutoff.
+- **`test_dynamic_eta.py`** — remaining-work math (including that
+  `trucks_remaining` is never fabricated), a constructed slow-cycle-time
+  scenario is correctly detected and explained, interval width shrinks as a
+  task nears completion, and the explanation module's factor directions are
+  correct for rain / an old machine / a fast operator.
 
 ## Next step (not done here)
 
-Training actual models (gradient boosting for ETA, etc.) against this
-feature matrix, evaluated with `/ml-evaluation` — intentionally out of scope
-for this step per the task instructions ("do NOT move to advanced models
-yet").
+Habit Radar, Idle Shield, Focus Battery, safety risk intelligence, and
+training recommendation models — intentionally out of scope for this step
+per the task instructions.
