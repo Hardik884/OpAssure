@@ -34,14 +34,14 @@ export function IncidentForm({ defaultEventType = "other", submitting, onSubmit,
         onSubmit(eventType, note.trim());
       }}
     >
-      <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-ink-600" htmlFor="incident-event-type">
+      <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-foreground-muted" htmlFor="incident-event-type">
         Event Type
       </label>
       <select
         id="incident-event-type"
         value={eventType}
         onChange={(e) => setEventType(e.target.value as IncidentEventType)}
-        className="mb-4 min-h-12 w-full rounded-industrial border-2 border-ink-950 bg-white px-3 text-base font-semibold text-ink-950"
+        className="mb-4 min-h-12 w-full rounded-industrial border-2 border-border bg-surface px-3 text-base font-semibold text-foreground"
       >
         {EVENT_TYPES.map(({ value, label }) => (
           <option key={value} value={value}>
@@ -50,7 +50,7 @@ export function IncidentForm({ defaultEventType = "other", submitting, onSubmit,
         ))}
       </select>
 
-      <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-ink-600" htmlFor="incident-note">
+      <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-foreground-muted" htmlFor="incident-note">
         Note
       </label>
       <textarea
@@ -59,7 +59,7 @@ export function IncidentForm({ defaultEventType = "other", submitting, onSubmit,
         onChange={(e) => setNote(e.target.value)}
         rows={3}
         placeholder="What happened?"
-        className="mb-4 w-full rounded-industrial border-2 border-ink-950 bg-white p-3 text-base text-ink-950 placeholder:text-line-400"
+        className="mb-4 w-full rounded-industrial border-2 border-border bg-surface p-3 text-base text-foreground placeholder:text-foreground-muted"
       />
 
       <Button type="submit" variant="primary" className="w-full" disabled={submitting}>
@@ -69,7 +69,7 @@ export function IncidentForm({ defaultEventType = "other", submitting, onSubmit,
         type="button"
         onClick={onCancel}
         disabled={submitting}
-        className="mt-3 min-h-11 w-full text-center text-sm font-bold uppercase tracking-wide text-line-500 underline hover:text-ink-950 disabled:opacity-40"
+        className="mt-3 min-h-11 w-full text-center text-sm font-bold uppercase tracking-wide text-foreground-muted underline hover:text-foreground disabled:opacity-40"
       >
         Cancel
       </button>

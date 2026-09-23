@@ -48,8 +48,79 @@
   --radius-panel: 0.75rem;
 }
 
+/*
+ * Semantic theme tokens. Components should read these (bg-background, bg-surface,
+ * text-foreground, text-foreground-muted, border-border, bg-accent, ...) instead of
+ * hardcoding ink/line literals directly, so light/dark mode is a single switch here
+ * rather than a per-component decision.
+ *
+ * Light values below are chosen to match the app's existing, already-approved
+ * light-mode appearance exactly. Dark values are a deliberate industrial dark
+ * interface reusing the same ink/line ramp already defined above — no new hex
+ * colors — never a naive inversion of the light theme.
+ *
+ * Status colors (safe/warn/critical) get their OWN semantic pair so a safety
+ * severity chip stays a solid, unambiguous block in both themes — never washed
+ * out by the general dark surface treatment.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-border: var(--border);
+  --color-accent: var(--color-brand-500);
+  --color-accent-foreground: var(--color-ink-950);
+
+  --color-status-safe-bg: var(--status-safe-bg);
+  --color-status-safe-fg: var(--status-safe-fg);
+  --color-status-warn-bg: var(--status-warn-bg);
+  --color-status-warn-fg: var(--status-warn-fg);
+  --color-status-critical-bg: var(--status-critical-bg);
+  --color-status-critical-fg: var(--status-critical-fg);
+}
+
 :root {
   color-scheme: light;
+
+  --background: var(--color-line-100);
+  --surface: #ffffff;
+  --surface-muted: var(--color-line-100);
+  --foreground: var(--color-ink-950);
+  --foreground-muted: var(--color-ink-700);
+  --border: var(--color-ink-950);
+
+  --status-safe-bg: var(--color-safe-bg);
+  --status-safe-fg: var(--color-safe-600);
+  --status-warn-bg: var(--color-warn-bg);
+  --status-warn-fg: var(--color-warn-600);
+  --status-critical-bg: var(--color-critical-bg);
+  --status-critical-fg: var(--color-critical-600);
+}
+
+/*
+ * Dark mode is opt-in via `data-theme="dark"` on <html> (set by ThemeProvider,
+ * persisted to localStorage) — never the OS media query alone, so the toggle in
+ * the header is always the source of truth.
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: var(--color-ink-950);
+  --surface: var(--color-ink-800);
+  --surface-muted: var(--color-ink-700);
+  --foreground: var(--color-line-100);
+  --foreground-muted: var(--color-line-400);
+  --border: var(--color-ink-600);
+
+  /* Solid, saturated blocks — not pastel-on-dark — so a critical alert is never ambiguous. */
+  --status-safe-bg: var(--color-safe-600);
+  --status-safe-fg: #ffffff;
+  --status-warn-bg: var(--color-warn-600);
+  --status-warn-fg: var(--color-ink-950);
+  --status-critical-bg: var(--color-critical-600);
+  --status-critical-fg: #ffffff;
 }
 
 html,
@@ -58,8 +129,8 @@ body {
 }
 
 body {
-  background: var(--color-line-100);
-  color: var(--color-ink-950);
+  background: var(--color-background);
+  color: var(--color-foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }

@@ -40,17 +40,17 @@ export function Modal({
       onClick={dismissible ? onClose : undefined}
     >
       <div
-        className="max-h-[92vh] w-full overflow-y-auto rounded-t-panel border-t-2 border-ink-950 bg-white p-5 sm:max-w-lg sm:rounded-panel sm:border-2"
+        className="max-h-[92vh] w-full overflow-y-auto rounded-t-panel border-t-2 border-border bg-surface p-5 sm:max-w-lg sm:rounded-panel sm:border-2"
         onClick={(e) => e.stopPropagation()}
       >
         {(title || (dismissible && onClose)) && (
           <div className="mb-3 flex items-center justify-between gap-3">
-            {title && <h2 className="text-lg font-black uppercase tracking-wide text-ink-950">{title}</h2>}
+            {title && <h2 className="text-lg font-black uppercase tracking-wide text-foreground">{title}</h2>}
             {dismissible && onClose && (
               <button
                 onClick={onClose}
                 aria-label="Close"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-industrial text-2xl font-bold text-line-500 hover:bg-line-100 hover:text-ink-950"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-industrial text-2xl font-bold text-foreground-muted hover:bg-surface-muted hover:text-foreground"
               >
                 ✕
               </button>

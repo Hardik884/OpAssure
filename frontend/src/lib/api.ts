@@ -14,12 +14,14 @@
  */
 import { API_URL, USE_MOCK_DATA } from "@/config/env";
 import {
-  mockActiveTaskInsightByTask, mockCriticalProximityAlert, mockMissionTasks, mockOperatorContext,
-  mockOperatorInsight, mockSafetyEvents, mockTask, mockThreatBriefingByTask,
+  mockActiveTaskInsightByTask, mockCriticalProximityAlert, mockFocus, mockHabitRadar,
+  mockInstructorSlots, mockMissionTasks, mockOperatorContext, mockOperatorInsight, mockSafetyEvents,
+  mockTask, mockThreatBriefingByTask, mockTrainingLibrary, mockTrainingRecommendation,
 } from "@/lib/mockData";
 import type {
-  ActiveTaskInsight, Incident, IncidentInput, MissionTask, OperatorContext, OperatorInsight, SafetyEvent, Task,
-  ThreatBriefingItem,
+  ActiveTaskInsight, FocusItem, HabitRadarItem, Incident, IncidentInput, InstructorSlot, MissionTask,
+  OperatorContext, OperatorInsight, SafetyEvent, Task, ThreatBriefingItem, TrainingClip,
+  TrainingRecommendation,
 } from "@/types";
 
 export class ApiError extends Error {
@@ -126,6 +128,45 @@ export const api = {
    */
   triggerDemoProximityAlert(): Promise<SafetyEvent> {
     return mockResolve(mockCriticalProximityAlert, 50);
+  },
+
+  /** Training Hub library — all available clips. */
+  getTrainingLibrary(): Promise<TrainingClip[]> {
+    if (USE_MOCK_DATA) return mockResolve(mockTrainingLibrary);
+    // TODO(real API): GET /training/recommendations/{operator_id} only returns recommendations,
+    // not a full library — no backend endpoint for the full clip catalog exists yet, so this
+    // stays mock until one is added. Do not invent a path here.
+    return request<TrainingClip[]>("/training/library");
+  },
+
+  /** The single "Recommended for you" / just-in-time recommendation, if any. */
+  getTrainingRecommendation(): Promise<TrainingRecommendation | null> {
+    if (USE_MOCK_DATA) return mockResolve(mockTrainingRecommendation);
+    // TODO(real API): GET /training/recommendations/{operator_id} returns
+    // { recommendations: [{clip_id, title, reason, priority, ...}] } sorted high-priority
+    // first — map recommendations[0] (if any) to TrainingRecommendation here.
+    return request<TrainingRecommendation | null>(`/training/recommendations/${encodeURIComponent("OP1001")}`);
+  },
+
+  /** Mock instructor booking slots — intentionally not a real scheduling system. */
+  getInstructorSlots(): Promise<InstructorSlot[]> {
+    return mockResolve(mockInstructorSlots);
+  },
+
+  /** Habit Radar — system-detected behavioural patterns, glanceable only. */
+  getHabitRadar(): Promise<HabitRadarItem[]> {
+    if (USE_MOCK_DATA) return mockResolve(mockHabitRadar);
+    // TODO(real API): GET /insights/operator/{id}/ml -> `habits[]` ({habit_type, is_habit, ...}).
+    // Map each detected habit to a HabitRadarItem here; do not compute detection in the UI.
+    return request<HabitRadarItem[]>("/insights/operator/OP1001/ml");
+  },
+
+  /** Focus — "what should the operator pay attention to right now," ranked. */
+  getFocus(): Promise<FocusItem[]> {
+    if (USE_MOCK_DATA) return mockResolve(mockFocus);
+    // TODO(real API): GET /insights/operator/{id}/ml -> `focus.factors[]`. Map to ranked
+    // FocusItem[] here; the ranking/score comes from the backend, never computed in the UI.
+    return request<FocusItem[]>("/insights/operator/OP1001/ml");
   },
 };
 

@@ -8,6 +8,7 @@
 import { StatusBadge } from "@/components/common/ui";
 
 import { useOperatorContext } from "./OperatorProvider";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
   const { context } = useOperatorContext();
@@ -33,6 +34,7 @@ export function Header() {
             <div className="text-xs leading-tight text-line-400">{machine.model}</div>
           </div>
           <StatusBadge status={safetyStatus} />
+          <ThemeToggle />
         </div>
       </div>
     </header>

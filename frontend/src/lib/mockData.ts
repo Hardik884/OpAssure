@@ -7,8 +7,9 @@
  */
 import { DEMO_MACHINE_ID, DEMO_OPERATOR_ID, DEMO_TASK_ID } from "@/config/demo";
 import type {
-  ActiveTaskInsight, Machine, MissionTask, Operator, OperatorContext, OperatorInsight, SafetyEvent,
-  Task, ThreatBriefingItem,
+  ActiveTaskInsight, FocusItem, HabitRadarItem, InstructorSlot, Machine, MissionTask, Operator,
+  OperatorContext, OperatorInsight, SafetyEvent, Task, ThreatBriefingItem, TrainingClip,
+  TrainingRecommendation,
 } from "@/types";
 
 export const mockOperator: Operator = {
@@ -106,13 +107,87 @@ export const mockCriticalProximityAlert: SafetyEvent = {
   message: "Worker detected on right",
 };
 
+/** Operator Twin — frozen handover example values. */
 export const mockOperatorInsight: OperatorInsight = {
   operatorId: DEMO_OPERATOR_ID,
-  paceFactor: 1.01,
-  rainSensitivity: 0.28,
-  fatiguePattern: "Slower after 14:00, worse on hot afternoons",
-  riskLevel: "low",
+  paceFactor: 0.94,
+  rainSensitivity: 0.08,
+  fatiguePattern: "afternoon",
+  riskLevel: "medium",
 };
+
+/** Training Library — placeholder/local clip references, no cloud video infra. */
+export const mockTrainingLibrary: TrainingClip[] = [
+  {
+    clipId: "CLIP_SEATBELT_01",
+    title: "Buckle Up Before You Move",
+    description: "Why re-fastening before the machine moves matters, even for short repositions.",
+    durationMin: 2,
+    category: "Safety",
+    videoRef: "/training/clips/seatbelt-01.mp4",
+  },
+  {
+    clipId: "CLIP_WETGROUND_01",
+    title: "Wet Ground & Excavation Safety",
+    description: "Reading soft/wet ground conditions before and during a dig.",
+    durationMin: 3,
+    category: "Ground Conditions",
+    videoRef: "/training/clips/wet-ground-01.mp4",
+  },
+  {
+    clipId: "CLIP_FATIGUE_01",
+    title: "Managing Afternoon Fatigue",
+    description: "Recognizing the pace drop that shows up later in a shift and adjusting for it.",
+    durationMin: 4,
+    category: "Machine Operation",
+    videoRef: "/training/clips/fatigue-01.mp4",
+  },
+  {
+    clipId: "CLIP_SMOOTH_01",
+    title: "Smooth Cycle Technique",
+    description: "Reducing harsh events with smoother bucket-to-truck cycles.",
+    durationMin: 3,
+    category: "Machine Operation",
+    videoRef: "/training/clips/smooth-cycle-01.mp4",
+  },
+  {
+    clipId: "CLIP_IDLE_01",
+    title: "Avoidable Idle Awareness",
+    description: "Telling truck-wait idle apart from idle that's actually avoidable.",
+    durationMin: 2,
+    category: "Excavation",
+    videoRef: "/training/clips/idle-01.mp4",
+  },
+];
+
+/** "Recommended for you" — sourced from mock/API data, never calculated in the UI. */
+export const mockTrainingRecommendation: TrainingRecommendation = {
+  clipId: "CLIP_WETGROUND_01",
+  title: "Wet Ground & Excavation Safety",
+  reason: "Current task conditions indicate wet ground.",
+  durationMin: 2,
+  priority: "high",
+};
+
+export const mockInstructorSlots: InstructorSlot[] = [
+  { slotId: "SLOT_01", instructorName: "J. Alvarez", trainingType: "Seatbelt Habit Coaching", time: "Tomorrow, 07:00" },
+  { slotId: "SLOT_02", instructorName: "M. Okafor", trainingType: "Wet Ground Excavation", time: "Tomorrow, 13:00" },
+  { slotId: "SLOT_03", instructorName: "J. Alvarez", trainingType: "Smooth Cycle Technique", time: "Thursday, 09:00" },
+];
+
+/** Habit Radar — clearly labeled as system-detected patterns, no invented numbers. */
+export const mockHabitRadar: HabitRadarItem[] = [
+  { id: "afternoon-pace", label: "Afternoon pace reduction", status: "Detected" },
+  { id: "wet-ground-slowdown", label: "Wet-ground cycle slowdown", status: "Detected" },
+  { id: "safety-attention", label: "Recent safety attention", status: "Normal" },
+];
+
+/** Focus — an operator attention aid, not a management priority ranking. */
+export const mockFocus: FocusItem[] = [
+  { id: "wet-ground", rank: 1, label: "Wet ground" },
+  { id: "afternoon-pace", rank: 2, label: "Afternoon pace pattern" },
+  { id: "proximity", rank: 3, label: "Proximity awareness" },
+];
 
 /** Assembled context for the header/shell/hooks — the shape every screen reads. */
 export const mockOperatorContext: OperatorContext = {

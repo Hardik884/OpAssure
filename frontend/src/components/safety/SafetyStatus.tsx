@@ -41,11 +41,11 @@ export function SafetyStatus({ events }: SafetyStatusProps) {
           const severity: SafetyLevel = events.find((e) => e.event.startsWith(key))?.severity ?? "safe";
           return (
             <li key={key} className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-ink-700">
+              <span className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-foreground-muted">
                 <span aria-hidden>{icon}</span>
                 {label}
               </span>
-              <span className="flex items-center gap-1.5 text-sm font-bold text-ink-950">
+              <span className="flex items-center gap-1.5 text-sm font-bold text-foreground">
                 <span className={`h-2.5 w-2.5 rounded-full ${DOT[severity]}`} aria-hidden />
                 {wordFor[severity]}
               </span>

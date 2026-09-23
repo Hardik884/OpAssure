@@ -17,14 +17,14 @@ interface ThreatBriefingProps {
 export function ThreatBriefing({ task, items, onAcknowledge, onCancel }: ThreatBriefingProps) {
   return (
     <div data-testid="threat-briefing">
-      <p className="mb-3 text-sm font-semibold text-line-500">
+      <p className="mb-3 text-sm font-semibold text-foreground-muted">
         Before starting {task.taskId} · {task.taskType} · Zone {task.zone}
       </p>
 
       {items === null ? (
-        <p className="text-sm font-medium text-line-500">Loading briefing…</p>
+        <p className="text-sm font-medium text-foreground-muted">Loading briefing…</p>
       ) : items.length === 0 ? (
-        <p className="text-sm font-medium text-line-500">No briefing items — clear to start.</p>
+        <p className="text-sm font-medium text-foreground-muted">No briefing items — clear to start.</p>
       ) : (
         <ul className="space-y-2">
           {items.map((item) => (
@@ -46,7 +46,7 @@ export function ThreatBriefing({ task, items, onAcknowledge, onCancel }: ThreatB
       </Button>
       <button
         onClick={onCancel}
-        className="mt-3 min-h-11 w-full text-center text-sm font-bold uppercase tracking-wide text-line-500 underline hover:text-ink-950"
+        className="mt-3 min-h-11 w-full text-center text-sm font-bold uppercase tracking-wide text-foreground-muted underline hover:text-foreground"
       >
         Cancel
       </button>

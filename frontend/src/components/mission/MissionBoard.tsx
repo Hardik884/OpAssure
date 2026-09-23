@@ -46,10 +46,10 @@ export function MissionBoard() {
 
   return (
     <PageContainer>
-      <p className="text-sm font-bold uppercase tracking-widest text-line-500">
+      <p className="text-sm font-bold uppercase tracking-widest text-foreground-muted">
         {getGreeting()}, {context.operator.name}
       </p>
-      <h1 className="mb-4 text-2xl font-black uppercase tracking-tight text-ink-950 sm:text-3xl">
+      <h1 className="mb-4 text-2xl font-black uppercase tracking-tight text-foreground sm:text-3xl">
         Today&apos;s Mission
       </h1>
 
@@ -115,8 +115,8 @@ function TaskDetail({ task }: { task: MissionTask }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-bold uppercase tracking-widest text-ink-600">{label}</dt>
-      <dd className="font-semibold text-ink-950">{value}</dd>
+      <dt className="text-xs font-bold uppercase tracking-widest text-foreground-muted">{label}</dt>
+      <dd className="font-semibold text-foreground">{value}</dd>
     </div>
   );
 }

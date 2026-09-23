@@ -155,3 +155,62 @@ export interface Incident extends IncidentInput {
   /** The backend attaches a recent-telemetry snapshot to every incident (its "Black Box"). */
   hasTelemetryContext: boolean;
 }
+
+/* ================================================================
+ * Theme + Training Hub + Insights types (Prompt 3)
+ *
+ * All additive — nothing above is renamed. "Real" values will come from
+ * GET /training/recommendations/{operator_id} and GET /insights/operator/{id}/ml
+ * (see docs/api/README.md) once wired; the frontend never invents them.
+ * ================================================================ */
+
+export type ThemeMode = "light" | "dark";
+
+/** Whether the app's live data is a real backend WebSocket or the local demo/mock feed. */
+export type ConnectionMode = "live" | "demo";
+
+/** One entry in the Training Library. Mirrors the backend's clip catalog shape. */
+export interface TrainingClip {
+  clipId: string;
+  title: string;
+  description: string;
+  durationMin: number;
+  category: string;
+  /** Local/placeholder video reference — no cloud video infra in this scope. */
+  videoRef: string;
+}
+
+/**
+ * A just-in-time recommendation, e.g. surfaced on Active Task or Training Hub's
+ * "Recommended for you". Presentation only — the reason/priority are supplied,
+ * never computed in the UI.
+ */
+export interface TrainingRecommendation {
+  clipId: string;
+  title: string;
+  reason: string;
+  durationMin: number;
+  priority: "high" | "medium" | "low";
+}
+
+/** A bookable instructor slot for the mock booking UI. */
+export interface InstructorSlot {
+  slotId: string;
+  instructorName: string;
+  trainingType: string;
+  time: string;
+}
+
+/** One system-detected behavioural pattern shown on the Habit Radar. */
+export interface HabitRadarItem {
+  id: string;
+  label: string;
+  status: "Detected" | "Normal";
+}
+
+/** One ranked item on the Focus list — "what to pay attention to right now." */
+export interface FocusItem {
+  id: string;
+  rank: number;
+  label: string;
+}

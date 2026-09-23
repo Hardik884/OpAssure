@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/AppShell";
+import { THEME_ANTI_FLASH_SCRIPT } from "@/components/layout/ThemeProvider";
 
 import "./globals.css";
 
@@ -16,6 +17,10 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* Sets data-theme before hydration so a stored dark preference never flashes light first. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_ANTI_FLASH_SCRIPT }} />
+      </head>
       <body className="antialiased">
         <AppShell>{children}</AppShell>
       </body>

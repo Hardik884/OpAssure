@@ -26,25 +26,25 @@ export function TaskCard({ task, variant, onStart, onView }: TaskCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <Badge>{task.taskId}</Badge>
-          <span className="text-sm font-bold tabular-nums text-line-600">{task.startTime}</span>
+          <span className="text-sm font-bold tabular-nums text-foreground-muted">{task.startTime}</span>
         </div>
         <StatusBadge status={riskToStatus(task.riskLevel)}>{task.riskLevel} risk</StatusBadge>
       </div>
 
-      <h3 className={`mt-2 font-black uppercase tracking-tight text-ink-950 ${isPrimary ? "text-2xl sm:text-3xl" : "text-lg"}`}>
+      <h3 className={`mt-2 font-black uppercase tracking-tight text-foreground ${isPrimary ? "text-2xl sm:text-3xl" : "text-lg"}`}>
         {task.taskType}
       </h3>
-      <p className="text-sm font-bold uppercase tracking-wide text-line-600">Zone {task.zone}</p>
+      <p className="text-sm font-bold uppercase tracking-wide text-foreground-muted">Zone {task.zone}</p>
 
       <div className={`mt-4 flex flex-wrap items-end justify-between gap-3 ${isPrimary ? "" : "mt-3"}`}>
         <div>
-          <div className="text-xs font-bold uppercase tracking-widest text-ink-600">ETA</div>
-          <div className={`font-black tabular-nums leading-none text-ink-950 ${isPrimary ? "text-4xl sm:text-5xl" : "text-2xl"}`}>
+          <div className="text-xs font-bold uppercase tracking-widest text-foreground-muted">ETA</div>
+          <div className={`font-black tabular-nums leading-none text-foreground ${isPrimary ? "text-4xl sm:text-5xl" : "text-2xl"}`}>
             {task.etaMin}–{task.etaMax}
-            <span className="ml-1 text-sm font-bold text-line-500">min</span>
+            <span className="ml-1 text-sm font-bold text-foreground-muted">min</span>
           </div>
         </div>
-        <div className="text-sm font-semibold text-line-600">
+        <div className="text-sm font-semibold text-foreground-muted">
           {weatherGlyph(task.weather)} {task.weather}
         </div>
       </div>
