@@ -9,8 +9,10 @@ import type { ReactNode } from "react";
 
 import { Header } from "./Header";
 import { Nav } from "./Nav";
+import { OfflineBanner } from "./OfflineBanner";
 import { OperatorProvider } from "./OperatorProvider";
 import { RealtimeProvider } from "./RealtimeProvider";
+import { ServiceWorkerRegistrar } from "./ServiceWorkerRegistrar";
 import { ThemeProvider } from "./ThemeProvider";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -18,8 +20,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <OperatorProvider>
         <RealtimeProvider>
+          <ServiceWorkerRegistrar />
           <div className="min-h-screen bg-background text-foreground">
             <Header />
+            <OfflineBanner />
             <Nav />
             {/* pb-20 clears the fixed bottom tab bar on phone widths (sm:pb-0 removes it back). */}
             <main className="pb-20 sm:pb-0">{children}</main>

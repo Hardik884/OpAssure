@@ -7,9 +7,9 @@
  */
 import { DEMO_MACHINE_ID, DEMO_OPERATOR_ID, DEMO_TASK_ID } from "@/config/demo";
 import type {
-  ActiveTaskInsight, FocusItem, HabitRadarItem, InstructorSlot, Machine, MissionTask, Operator,
-  OperatorContext, OperatorInsight, SafetyEvent, Task, ThreatBriefingItem, TrainingClip,
-  TrainingRecommendation,
+  ActiveTaskInsight, FocusItem, HabitRadarItem, HistoryEntry, Incident, InstructorSlot, Machine,
+  MissionTask, Operator, OperatorContext, OperatorInsight, SafetyEvent, Task, ThreatBriefingItem,
+  TrainingClip, TrainingRecommendation,
 } from "@/types";
 
 export const mockOperator: Operator = {
@@ -187,6 +187,67 @@ export const mockFocus: FocusItem[] = [
   { id: "wet-ground", rank: 1, label: "Wet ground" },
   { id: "afternoon-pace", rank: 2, label: "Afternoon pace pattern" },
   { id: "proximity", rank: 3, label: "Proximity awareness" },
+];
+
+/** Today's completed activity for /history — same demo tasks the Mission Board shows, as history. */
+export const mockHistory: HistoryEntry[] = [
+  {
+    taskId: "T001",
+    taskType: "Earth Excavation",
+    zone: "A",
+    startTime: "08:30",
+    status: "completed",
+    etaMin: 52,
+    etaMax: 58,
+    weather: "Rainy",
+    safetyNote: "Proximity alert resolved",
+  },
+  {
+    taskId: "T002",
+    taskType: "Trenching",
+    zone: "C",
+    startTime: "10:00",
+    status: "completed",
+    etaMin: 43,
+    etaMax: 49,
+    weather: "Cloudy",
+    safetyNote: null,
+  },
+  {
+    taskId: "T003",
+    taskType: "Material Loading",
+    zone: "B",
+    startTime: "14:00",
+    status: "completed",
+    etaMin: 31,
+    etaMax: 35,
+    weather: "Clear",
+    safetyNote: null,
+  },
+];
+
+/** A short recent-incidents list for the /safety page — glanceable, not a full incident log UI. */
+export const mockRecentIncidents: Incident[] = [
+  {
+    id: "INC-1042",
+    eventType: "proximity",
+    note: "Worker walked into swing radius, stopped machine.",
+    taskId: DEMO_TASK_ID,
+    operatorId: DEMO_OPERATOR_ID,
+    machineId: DEMO_MACHINE_ID,
+    createdAt: "2025-06-29T08:14:00",
+    hasTelemetryContext: true,
+  },
+  {
+    id: "INC-1039",
+    eventType: "ground",
+    note: "Ground reported wet",
+    taskId: DEMO_TASK_ID,
+    operatorId: DEMO_OPERATOR_ID,
+    machineId: DEMO_MACHINE_ID,
+    createdAt: "2025-06-29T07:58:00",
+    hasTelemetryContext: true,
+  },
 ];
 
 /** Assembled context for the header/shell/hooks — the shape every screen reads. */

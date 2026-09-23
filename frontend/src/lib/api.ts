@@ -14,13 +14,13 @@
  */
 import { API_URL, USE_MOCK_DATA } from "@/config/env";
 import {
-  mockActiveTaskInsightByTask, mockCriticalProximityAlert, mockFocus, mockHabitRadar,
-  mockInstructorSlots, mockMissionTasks, mockOperatorContext, mockOperatorInsight, mockSafetyEvents,
-  mockTask, mockThreatBriefingByTask, mockTrainingLibrary, mockTrainingRecommendation,
+  mockActiveTaskInsightByTask, mockCriticalProximityAlert, mockFocus, mockHabitRadar, mockHistory,
+  mockInstructorSlots, mockMissionTasks, mockOperatorContext, mockOperatorInsight, mockRecentIncidents,
+  mockSafetyEvents, mockTask, mockThreatBriefingByTask, mockTrainingLibrary, mockTrainingRecommendation,
 } from "@/lib/mockData";
 import type {
-  ActiveTaskInsight, FocusItem, HabitRadarItem, Incident, IncidentInput, InstructorSlot, MissionTask,
-  OperatorContext, OperatorInsight, SafetyEvent, Task, ThreatBriefingItem, TrainingClip,
+  ActiveTaskInsight, FocusItem, HabitRadarItem, HistoryEntry, Incident, IncidentInput, InstructorSlot,
+  MissionTask, OperatorContext, OperatorInsight, SafetyEvent, Task, ThreatBriefingItem, TrainingClip,
   TrainingRecommendation,
 } from "@/types";
 
@@ -167,6 +167,23 @@ export const api = {
     // TODO(real API): GET /insights/operator/{id}/ml -> `focus.factors[]`. Map to ranked
     // FocusItem[] here; the ranking/score comes from the backend, never computed in the UI.
     return request<FocusItem[]>("/insights/operator/OP1001/ml");
+  },
+
+  /** Today's completed activity for /history. */
+  getTaskHistory(): Promise<HistoryEntry[]> {
+    if (USE_MOCK_DATA) return mockResolve(mockHistory);
+    // TODO(real API): no dedicated history endpoint exists yet — GET /tasks/today?operator_id=
+    // returns `status` (completed|scheduled) per task and GET /incidents/{operator_id} has
+    // per-task events; combine those here into HistoryEntry[] once wired, never invent one.
+    return request<HistoryEntry[]>("/tasks/today?operator_id=OP1001");
+  },
+
+  /** A short recent-incidents list for the /safety page. */
+  getRecentIncidents(): Promise<Incident[]> {
+    if (USE_MOCK_DATA) return mockResolve(mockRecentIncidents);
+    // TODO(real API): GET /incidents/{operator_id} -> { incidents: [...] }; map snake_case
+    // fields (operator_id, machine_id, task_id, type, description, timestamp) to Incident here.
+    return request<Incident[]>(`/incidents/${encodeURIComponent("OP1001")}`);
   },
 };
 

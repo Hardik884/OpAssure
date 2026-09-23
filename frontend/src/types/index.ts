@@ -214,3 +214,20 @@ export interface FocusItem {
   rank: number;
   label: string;
 }
+
+/**
+ * One completed task shown on /history. Mirrors the frozen Task shape plus a
+ * completion status and time — presentation only, never recalculated here.
+ */
+export interface HistoryEntry {
+  taskId: string;
+  taskType: string;
+  zone: string;
+  startTime: string;
+  status: "completed" | "cancelled";
+  etaMin: number;
+  etaMax: number;
+  weather: string;
+  /** The most notable safety/event indicator for this task, if any (e.g. "proximity"). */
+  safetyNote: string | null;
+}

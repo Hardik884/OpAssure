@@ -38,7 +38,7 @@ export function Card({
   const radius = rounded === "lg" ? "rounded-panel" : "rounded-industrial";
   const surface = tone === "dark" ? "border-border bg-ink-900 text-white" : "border-border bg-surface text-foreground";
   return (
-    <section {...rest} className={`${radius} border-2 ${surface} ${padded ? "p-4 sm:p-5" : ""} ${className}`}>
+    <section {...rest} className={`${radius} border-2 shadow-sm ${surface} ${padded ? "p-4 sm:p-5" : ""} ${className}`}>
       {children}
     </section>
   );

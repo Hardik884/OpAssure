@@ -1,16 +1,36 @@
-import { Card, Empty, PageContainer, SectionHeader } from "@/components/common/ui";
+"use client";
 
-/**
- * Placeholder route — establishes the page + navigation entry so it is
- * discoverable now. The History feature itself is built in a later prompt.
- */
+/** Today's completed activity — operational and glanceable, not an analytics dashboard. */
+import { HistoryEntryCard } from "@/components/history/HistoryEntryCard";
+import { Card, Empty, ErrorNote, PageContainer, SectionHeader } from "@/components/common/ui";
+import { useTaskHistory } from "@/hooks/useTaskHistory";
+
 export default function HistoryPage() {
+  const { entries, loading, error } = useTaskHistory();
+
   return (
     <PageContainer>
-      <SectionHeader title="History" />
-      <Card>
-        <Empty>Past shifts and completed tasks will appear here.</Empty>
-      </Card>
+      <h1 className="mb-4 text-2xl font-black uppercase tracking-tight text-foreground sm:text-3xl">History</h1>
+
+      <SectionHeader title="Today's activity" />
+
+      {error && <ErrorNote>{error}</ErrorNote>}
+
+      {loading ? (
+        <Card>
+          <Empty>Loading today&apos;s activity…</Empty>
+        </Card>
+      ) : entries.length === 0 ? (
+        <Card>
+          <Empty>No completed activity yet today.</Empty>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {entries.map((entry) => (
+            <HistoryEntryCard key={entry.taskId} entry={entry} />
+          ))}
+        </div>
+      )}
     </PageContainer>
   );
 }
