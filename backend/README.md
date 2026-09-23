@@ -5,8 +5,8 @@
 
 > Status: data foundation + all RED REST APIs (operators, tasks, telemetry, safety,
 > incidents with telemetry snapshot, training, insights, unified ML input, weather with
-> synthetic fallback). Telemetry replay and WebSockets are the next step. API contracts:
-> [`docs/api/README.md`](../docs/api/README.md).
+> synthetic fallback), T001 telemetry replay and WebSocket events (`WS /ws`).
+> API + WebSocket contracts: [`docs/api/README.md`](../docs/api/README.md).
 
 ## Structure
 
@@ -22,14 +22,17 @@
 | `app/services/insights_service.py` | Operator metrics + deterministic habit detection.                |
 | `app/services/*`               | Tasks, incidents, training, safety state, ML input payload.          |
 | `app/core/errors.py`           | Uniform JSON errors (no SQL/tracebacks to clients).                  |
-| `app/websocket/events.py`      | WebSocket event payload builders (transport comes with replay).      |
+| `app/services/replay_service.py` | T001 replay loop: DB rows -> live store -> safety/proximity/ETA/habit -> events. |
+| `app/services/eta_service.py`  | Deterministic ETA fallback (swap in the ML model here).              |
+| `app/api/demo.py`              | `POST /demo/start|stop|reset`, `GET /demo/status`.                   |
+| `app/websocket/`               | `WS /ws` route, connection manager, event payload builders.          |
 | `app/db/session.py`            | Engine / session setup from `DATABASE_URL`.                          |
 | `app/db/init_db.py`            | Create or reset the schema.                                          |
 | `app/core/config.py`           | Environment configuration (`.env` loading).                          |
 | `simulator/generate_data.py`   | Deterministic synthetic data generator.                              |
 | `simulator/scenarios.py`       | The scripted demo scenario (OP1001 / EXC001 / T001).                 |
 | `simulator/seed.py`            | Reset DB + load synthetic data + verify.                             |
-| `simulator/replay.py`          | Telemetry replay (placeholder — next step).                          |
+| `simulator/replay.py`          | CLI: connect to `/ws`, start the replay, print live events.         |
 | `migrations/`                  | How the schema is managed (see its README).                          |
 | `tests/`                       | Backend tests.                                                       |
 
@@ -112,6 +115,19 @@ uvicorn app.main:app --reload
   `/ml-input/operator/OP1001`
 - Health: http://localhost:8000/health → `{"status": "ok", "database": "ok"}`
   (`database` is `not_configured` / `unavailable` when the DB is missing).
+
+### 7. Run the live demo (replay + WebSocket)
+
+With the server running, in a second terminal (from `backend/`):
+
+```bash
+python -m simulator.replay                  # starts the T001 replay and prints every event
+python -m simulator.replay --interval 1 --quiet   # faster, hide telemetry_update lines
+```
+
+Or from Swagger / curl: `curl -X POST localhost:8000/demo/start` (then `/demo/stop`,
+`/demo/reset`, `/demo/status`); the frontend connects to `ws://localhost:8000/ws`.
+`REPLAY_INTERVAL_SECONDS` (default 3) sets the pace.
 
 ### Tests
 

@@ -93,18 +93,20 @@ def test_weather_synthetic_mode_never_calls_network():
 def test_event_envelopes_follow_handover_contract():
     row = _row(5)
     e = events.telemetry_update(row)
-    assert e["type"] == "telemetry_update" and e["version"] == 1
-    assert {"timestamp", "cycleTime", "idle", "fuel", "belt", "movement"} <= set(e["payload"])
-    assert e["payload"]["timestamp"] == "2025-06-29T07:05:00"
-    s = events.safety_alert(SafetyAlert("seatbelt", "critical", "msg"), row)["payload"]
+    assert set(e) == {"event", "version", "data"}
+    assert e["event"] == "telemetry_update" and e["version"] == 1
+    assert {"timestamp", "cycleTime", "idle", "fuel", "belt", "movement"} <= set(e["data"])
+    assert e["data"]["timestamp"] == "2025-06-29T07:05:00"
+    s = events.safety_alert(SafetyAlert("seatbelt", "critical", "msg"), row)["data"]
     assert (s["severity"], s["type"], s["message"]) == ("critical", "seatbelt", "msg")
-    p = events.proximity_alert("EXC001", row["timestamp"], "critical", 12.04, "right", "W04")["payload"]
-    assert (p["severity"], p["distance"], p["direction"]) == ("critical", 12.0, "right")
-    eta = events.eta_update("T001", 52, 58, 45, "Rain slowed cycles", 40)["payload"]
+    p = events.proximity_alert("EXC001", row["timestamp"], "critical", 12.04, "right", "W04", "critical")["data"]
+    assert (p["severity"], p["distance"], p["direction"], p["zone"]) == ("critical", 12.0, "right", "critical")
+    eta = events.eta_update("T001", {"min": 52, "max": 58, "original": 45, "reason": "Rain slowed cycles",
+                                     "bucketsRemaining": 40})["data"]
     assert {"min", "max", "original", "reason", "bucketsRemaining"} <= set(eta)
-    h = events.habit_detected("OP1001", {"habit_type": "seatbelt", "count": 3, "explanation": "x"})["payload"]
+    h = events.habit_detected("OP1001", {"habit_type": "seatbelt", "count": 3, "explanation": "x"})["data"]
     assert (h["habitType"], h["count"], h["explanation"]) == ("seatbelt", 3, "x")
-    t = events.training_recommendation("OP1001", {"clip_id": "C", "title": "T", "reason": "R"})["payload"]
+    t = events.training_recommendation("OP1001", {"clip_id": "C", "title": "T", "reason": "R"})["data"]
     assert (t["clipId"], t["title"], t["reason"]) == ("C", "T", "R")
     with pytest.raises(ValueError):
         events.envelope("nope", {})

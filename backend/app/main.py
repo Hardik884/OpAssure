@@ -4,21 +4,31 @@ Contracts are documented in docs/api/README.md; Swagger UI is served at /docs.
 """
 
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api import incidents, machines, ml_input, operators, safety, tasks, telemetry, training, weather
+from app.api import demo, incidents, machines, ml_input, operators, safety, tasks, telemetry, training, weather
 from app.core.config import get_cors_origins
 from app.core.errors import register_error_handlers
 from app.db.session import DatabaseNotConfiguredError, get_engine
+from app.websocket import routes as ws_routes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="OpAssure API", version="0.2.0")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    yield
+    await demo.replay_engine.stop()  # clean shutdown of a running replay
+
+
+app = FastAPI(title="OpAssure API", version="0.3.0", lifespan=lifespan)
 
 cors_origins = get_cors_origins()
 if cors_origins:
@@ -28,7 +38,8 @@ else:
     logger.warning("CORS_ORIGINS is not set; browser clients on other origins will be blocked")
 
 register_error_handlers(app)
-for module in (operators, machines, tasks, telemetry, safety, incidents, training, weather, ml_input):
+for module in (operators, machines, tasks, telemetry, safety, incidents, training, weather, ml_input, demo,
+               ws_routes):
     app.include_router(module.router)
 
 

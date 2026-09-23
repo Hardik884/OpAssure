@@ -45,3 +45,11 @@ def get_weather_mode() -> str:
 def get_weather_api_url() -> str | None:
     """WEATHER_API_URL: an Open-Meteo-compatible hourly endpoint. Only used in live mode."""
     return os.getenv("WEATHER_API_URL") or None
+
+
+def get_replay_interval_seconds() -> float:
+    """REPLAY_INTERVAL_SECONDS: wall-clock pause between replayed telemetry rows (default 3)."""
+    try:
+        return max(0.0, float(os.getenv("REPLAY_INTERVAL_SECONDS") or 3.0))
+    except ValueError:
+        return 3.0

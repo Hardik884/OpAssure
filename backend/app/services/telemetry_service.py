@@ -97,6 +97,13 @@ class LiveTelemetryStore:
     def idle_minutes(self, machine_id: str) -> float:
         return self._idle_min.get(machine_id, 0.0)
 
+    def clear_machine(self, machine_id: str) -> None:
+        """Forget one machine's live state (a fresh replay starts from zero)."""
+        with self._lock:
+            self._buffers.pop(machine_id, None)
+            self._latest.pop(machine_id, None)
+            self._idle_min.pop(machine_id, None)
+
     def clear(self) -> None:
         with self._lock:
             self._buffers.clear()
