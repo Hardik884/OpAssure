@@ -52,6 +52,8 @@ Every error has the same shape. Raw SQL and stack traces are never returned.
 | POST | `/training/complete` | Record training completion |
 | GET | `/operator/{id}/insights` | Operator Twin data |
 | GET | `/ml-input/operator/{id}` | Unified AI/ML input payload |
+| GET | `/insights/operator/{id}/ml` | **Real ML-backed intelligence** (Operator Twin, ETA, Habit Radar, risk, training, threat briefing — see below) |
+| POST | `/insights/ml-refresh` | Retrain the ML layer against the current database (after reseeding) |
 | GET | `/weather` | Weather (always answers; synthetic fallback) |
 | POST/GET | `/demo/start` · `/demo/stop` · `/demo/reset` · `/demo/status` | Replay control (below) |
 | WS | `/ws` | Realtime events (below) |
@@ -314,6 +316,54 @@ One payload so the AI/ML layer never queries the database.
 `history` = all of the operator's completed tasks before today (and before `asOf`),
 oldest first, with per-task telemetry aggregates and weather at task start. It is
 ready-made training data for the ETA model. The example above used `?as_of=2025-06-29T08:05:00`.
+
+### GET /insights/operator/{id}/ml
+
+The **real** AI/ML layer (`ml/` — see `ml/README.md` and `ml/docs/integration.md`),
+not the deterministic `/operator/{id}/insights` fallback above. Backed by
+`app/services/ml_bridge.py`, which queries the same database as every other
+endpoint and feeds it into `ml.src.intelligence.operator_state.generate_operator_state()`
+— no separate ML dataset, no duplicated logic.
+
+| Query | Default |
+| --- | --- |
+| `task_id` | operator's current task today |
+
+```json
+{"operator_id": "OP1001", "machine_id": "EXC001", "task_id": "T001",
+ "operator_twin": {"operatorId": "OP1001", "paceFactor": 0.986, "rainSensitivity": 0.091,
+                    "heatSensitivity": 0.1, "afternoonEffect": -0.135, "fuelEfficiency": 1.069,
+                    "seatbeltViolationRate": 0.0347, "nTasks": 237},
+ "eta": {"eta_min": 45.7, "eta_max": 64.7, "eta_point": 54.2, "original_eta": 45.0,
+         "reason": "...", "factors": ["..."], "buckets_remaining": 0, "model_name": "linear_regression"},
+ "dynamic_eta": {"...": "same shape as eta, plus pct_complete and cycle_time_change_pct"},
+ "remaining_work": {"total_buckets": 107, "buckets_completed": 0, "buckets_remaining": 107,
+                     "pct_complete": 0.0, "trucks_remaining": null},
+ "risk": {"risk_level": "medium", "score": 51, "factors": ["..."], "explanation": "...", "hard_rule_triggered": null},
+ "habits": [{"habit_type": "seatbelt_during_truck_wait", "is_habit": true, "...": "..."}],
+ "idle_analysis": {"...": "..."},
+ "focus": {"score": 100, "factors": [], "disclaimer": "...", "recommendation": "..."},
+ "fuel_diagnosis": [],
+ "training": {"recommended": true, "clip_id": "TR_SEATBELT_TRUCKWAIT", "...": "..."},
+ "threat_briefing": [{"priority": 1, "risk": "...", "reason": "...", "source": "safety"}],
+ "explanations": {"eta": {"reason": "...", "factors": ["..."]}, "...": "..."}}
+```
+
+`as_of` (task progress) is derived the same way `/ml-input/operator/{id}` derives
+it: the live replay position for this task if one is running, else the task's
+`start_time` — never "the whole pre-seeded telemetry table", which would show
+every task as already 100% complete.
+
+The database's category values (`skill`, weather `condition`, `idle_reason`,
+`seatbelt_status`) are close to but not identical to `ml/`'s own synthetic
+schema (independently generated datasets) — `ml_bridge.py` is the one place
+that mapping happens; nothing else needs to know about it.
+
+The ETA model is trained once per backend process (against whatever's in the
+database) and cached — **not** retrained per request. Call `POST /insights/ml-refresh`
+after reseeding (`python -m simulator.seed`) to retrain against the new data;
+until then, stale-but-still-valid cached results are served. Fewer than 20
+completed tasks in the database → 503 `unavailable` (not enough data to train).
 
 ### GET /weather
 

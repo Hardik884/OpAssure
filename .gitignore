@@ -87,3 +87,6 @@ postgres-data/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ---------- Claude Code local session state ----------
+.claude/

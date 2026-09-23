@@ -20,7 +20,10 @@ class DatabaseNotConfiguredError(RuntimeError):
 
 
 def make_engine(url: str) -> Engine:
-    connect_args = {"connect_timeout": 5} if url.startswith("postgresql") else {}
+    # `connect_timeout` is a psycopg2-specific kwarg name; other drivers
+    # (e.g. pg8000, sometimes used where psycopg2's compiled extension can't
+    # load) don't accept it and would fail to connect at all.
+    connect_args = {"connect_timeout": 5} if url.startswith("postgresql+psycopg2") else {}
     return create_engine(url, pool_pre_ping=True, connect_args=connect_args)
 
 

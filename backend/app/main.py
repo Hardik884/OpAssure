@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api import demo, incidents, machines, ml_input, operators, safety, tasks, telemetry, training, weather
+from app.api import demo, incidents, insights, machines, ml_input, operators, safety, tasks, telemetry, training, weather
 from app.core.config import get_cors_origins
 from app.core.errors import register_error_handlers
 from app.db.session import DatabaseNotConfiguredError, get_engine
@@ -38,7 +38,7 @@ else:
     logger.warning("CORS_ORIGINS is not set; browser clients on other origins will be blocked")
 
 register_error_handlers(app)
-for module in (operators, machines, tasks, telemetry, safety, incidents, training, weather, ml_input, demo,
+for module in (operators, machines, tasks, telemetry, safety, incidents, training, weather, ml_input, insights, demo,
                ws_routes):
     app.include_router(module.router)
 

@@ -137,3 +137,34 @@ def test_model_io_does_not_import_the_training_module():
     )
     assert model_io_module.MODEL_PATH == config.ETA_MODEL_PATH
     assert model_io_module.METADATA_PATH == config.ETA_METADATA_PATH
+
+
+def test_train_and_select_accepts_externally_supplied_tables(tables):
+    """train_and_select(tables=...) trains against caller-supplied
+    DataFrames instead of the CSVs — this is what backend/app/services/
+    ml_bridge.py uses to train against live database data. Passing the same
+    in-memory tables the `tables` fixture already generated should train
+    successfully and produce a normal-shaped report."""
+    from src.eta.train import train_and_select
+
+    report = train_and_select(save=False, tables=tables)
+    assert report["selected_model"] in report["candidates"]
+    assert report["split_sizes"]["train"] > 0
+    assert "_fitted_model" in report
+
+
+def test_train_and_select_drops_rows_with_no_real_outcome(tables):
+    """A row with actual_time_min = NaN (e.g. a scheduled, not-yet-completed
+    task) must never be trained on."""
+    import numpy as np
+    from src.eta.train import train_and_select
+
+    broken_tasks = tables["tasks"].copy()
+    broken_tasks.loc[broken_tasks.index[:5], "actual_time_min"] = np.nan
+    broken_tables = {**tables, "tasks": broken_tasks}
+
+    # Must not raise, and must not silently train on the NaN rows.
+    report = train_and_select(save=False, tables=broken_tables)
+    assert report["split_sizes"]["train"] + report["split_sizes"]["val"] + report["split_sizes"]["test"] < len(
+        broken_tasks
+    )

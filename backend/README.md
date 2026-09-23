@@ -5,7 +5,9 @@
 
 > Status: data foundation + all RED REST APIs (operators, tasks, telemetry, safety,
 > incidents with telemetry snapshot, training, insights, unified ML input, weather with
-> synthetic fallback), T001 telemetry replay and WebSocket events (`WS /ws`).
+> synthetic fallback), T001 telemetry replay and WebSocket events (`WS /ws`), **and the
+> real `ml/` AI/ML layer wired in** (`GET /insights/operator/{id}/ml` — Operator Twin,
+> ETA, Habit Radar, risk, training, threat briefing; see `app/services/ml_bridge.py`).
 > API + WebSocket contracts: [`docs/api/README.md`](../docs/api/README.md).
 
 ## Structure
@@ -23,7 +25,9 @@
 | `app/services/*`               | Tasks, incidents, training, safety state, ML input payload.          |
 | `app/core/errors.py`           | Uniform JSON errors (no SQL/tracebacks to clients).                  |
 | `app/services/replay_service.py` | T001 replay loop: DB rows -> live store -> safety/proximity/ETA/habit -> events. |
-| `app/services/eta_service.py`  | Deterministic ETA fallback (swap in the ML model here).              |
+| `app/services/eta_service.py`  | Deterministic ETA fallback (used by the live replay path; `ml_bridge.py` is the real ML). |
+| `app/services/ml_bridge.py`    | Bridges the database to `ml/` (see `ml/docs/integration.md`): builds DataFrames, maps schema differences, caches the trained model, calls `generate_operator_state()`/`update_operator_state()`. |
+| `app/api/insights.py`          | `GET /insights/operator/{id}/ml`, `POST /insights/ml-refresh` — the real ML layer over HTTP. |
 | `app/api/demo.py`              | `POST /demo/start|stop|reset`, `GET /demo/status`.                   |
 | `app/websocket/`               | `WS /ws` route, connection manager, event payload builders.          |
 | `app/db/session.py`            | Engine / session setup from `DATABASE_URL`.                          |

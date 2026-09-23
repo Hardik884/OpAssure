@@ -52,22 +52,41 @@ def get_candidate_models() -> dict[str, object]:
     }
 
 
-def train_and_select(save: bool = True) -> dict:
+def train_and_select(save: bool = True, tables: dict | None = None) -> dict:
     """Build the dataset, train + compare candidates, select the best by
     validation MAE, compute residual-quantile interval offsets, and (by
     default) save the winning model + metadata to `ml/models/eta/`.
 
+    `tables` (optional): a dict with `operators`/`machines`/`weather`/
+    `tasks`/`telemetry` DataFrames, for training against data that isn't
+    `data/synthetic/`'s CSVs (e.g. a live backend database — see
+    `backend/app/services/ml_bridge.py`). Defaults to loading the CSVs, so
+    every existing caller is unaffected. `save` defaults to writing
+    `ml/models/eta/` regardless of the data source; pass `save=False` when
+    training against externally-supplied data that shouldn't overwrite the
+    CSV-trained artifact.
+
     Returns the full report dict (also written as metadata.json when saving).
     """
-    operators_df = load_operators()
-    machines_df = load_machines()
-    weather_df = load_weather()
-    tasks_df = load_tasks()
-    telemetry_df = load_telemetry()
+    if tables is not None:
+        operators_df, machines_df, weather_df = tables["operators"], tables["machines"], tables["weather"]
+        tasks_df, telemetry_df = tables["tasks"], tables["telemetry"]
+    else:
+        operators_df = load_operators()
+        machines_df = load_machines()
+        weather_df = load_weather()
+        tasks_df = load_tasks()
+        telemetry_df = load_telemetry()
 
     features_df, target, feature_cols = build_eta_dataset(
         tasks_df, operators_df, machines_df, weather_df, telemetry_df
     )
+
+    # Defensive: never train on a row with no real outcome (e.g. a
+    # not-yet-completed task passed in with a placeholder actual_time_min —
+    # see ml_bridge.py's _tasks_df()). Callers are expected to pre-filter,
+    # but this protects every caller, not just that one.
+    features_df = features_df.dropna(subset=["actual_time_min"])
 
     train_df, val_df, test_df = time_aware_split(features_df)
     y_train = train_df["actual_time_min"]
