@@ -1,0 +1,7 @@
+label_id,pattern_type,entity_type,entity_id,description,start_date,end_date
+GT001,seatbelt_habit,operator,OP1005,Unbuckles during long idle waits; sometimes starts moving before re-buckling.,2026-06-01,2026-07-30
+GT002,afternoon_slowdown,global,all_operators,"Pace drops after each operator's fatigue_start_hour (~1-3pm), worse in heat.",2026-06-01,2026-07-30
+GT003,machine_degradation,machine,EXC002,Cycle time and fuel use rise across the window for every operator on this machine.,2026-06-01,2026-07-30
+GT004,operator_inefficiency,operator,OP1010,Consistently higher fuel use per active minute across multiple machines.,2026-06-01,2026-07-30
+GT005,legitimate_idle,task_type,"hauling,loading",Idle time while waiting for trucks; must not be attributed to the operator as a fault.,2026-06-01,2026-07-30
+GT006,proximity_near_miss,site,all_machines,Workers repeatedly enter a machine's swing-zone area (see near_misses.csv).,2026-06-01,2026-07-30

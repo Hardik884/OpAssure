@@ -1,0 +1,122 @@
+incident_id,timestamp,operator_id,machine_id,task_id,incident_type,severity,description
+INC0001,2026-07-09 10:17:10.104369,OP1010,EXC002,T1802,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0002,2026-07-29 15:08:15.762029,OP1010,EXC001,T2735,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0003,2026-06-02 10:01:21.933207,OP1013,EXC008,T098,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0004,2026-07-07 13:56:16.660195,OP1013,EXC006,T1732,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0005,2026-06-17 09:29:36.827673,OP1003,EXC005,T768,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0006,2026-07-21 10:44:01.451664,OP1007,EXC004,T2368,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0007,2026-06-08 09:07:42.325116,OP1005,EXC002,T346,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0008,2026-07-27 12:50:38.625621,OP1006,EXC007,T2671,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0009,2026-06-13 09:43:26.344409,OP1004,EXC008,T611,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0010,2026-07-21 15:14:43.330484,OP1018,EXC002,T2359,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0011,2026-07-29 08:20:00.000000,OP1005,EXC003,T2742,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0012,2026-06-20 12:24:54.384031,OP1017,EXC003,T905,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0013,2026-06-21 12:01:44.978907,OP1002,EXC006,T976,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0014,2026-06-19 12:58:23.979158,OP1005,EXC005,T869,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0015,2026-06-20 12:29:54.384031,OP1017,EXC003,T905,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0016,2026-06-26 14:01:07.316735,OP1019,EXC002,T1186,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0017,2026-07-29 08:25:00.000000,OP1005,EXC003,T2742,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0018,2026-06-03 09:02:43.950401,OP1002,EXC001,T101,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0019,2026-06-13 07:45:00.000000,OP1019,EXC006,T598,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0020,2026-06-24 07:25:00.000000,OP1010,EXC001,T1079,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0021,2026-07-25 08:00:00.000000,OP1005,EXC005,T2565,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0022,2026-06-21 13:26:54.328494,OP1017,EXC004,T961,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0023,2026-06-06 12:10:10.126732,OP1005,EXC006,T279,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0024,2026-06-25 15:00:09.397729,OP1005,EXC005,T1158,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0025,2026-07-26 13:47:25.003721,OP1005,EXC008,T2630,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0026,2026-06-13 09:38:26.344409,OP1004,EXC008,T611,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0027,2026-06-02 10:39:15.245649,OP1005,EXC005,T075,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0028,2026-06-22 07:35:00.000000,OP1013,EXC005,T1015,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0029,2026-06-02 10:34:15.245649,OP1005,EXC005,T075,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0030,2026-06-21 12:19:55.292008,OP1017,EXC007,T982,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0031,2026-06-23 08:56:29.422196,OP1004,EXC003,T1046,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0032,2026-07-07 10:30:56.071703,OP1003,EXC002,T1706,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0033,2026-06-23 08:51:29.422196,OP1004,EXC003,T1046,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0034,2026-07-08 11:00:31.837277,OP1018,EXC006,T1780,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0035,2026-07-14 13:45:02.382274,OP1005,EXC004,T2058,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0036,2026-07-21 10:39:01.451664,OP1007,EXC004,T2368,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0037,2026-07-24 17:44:04.544525,OP1014,EXC002,T2504,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0038,2026-06-21 13:31:54.328494,OP1017,EXC004,T961,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0039,2026-06-21 09:48:02.113829,OP1007,EXC006,T974,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0040,2026-06-22 11:12:17.314567,OP1016,EXC001,T991,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0041,2026-07-30 08:40:11.498696,OP1007,EXC003,T2783,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0042,2026-06-29 08:17:33.362951,OP1020,EXC004,T1342,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0043,2026-06-25 10:50:43.588865,OP1006,EXC007,T1167,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0044,2026-06-02 09:17:33.019522,OP1010,EXC004,T065,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0045,2026-07-25 10:49:51.209199,OP1004,EXC005,T2567,seatbelt,medium,Seatbelt not fastened while machine in motion.
+INC0046,2026-06-25 15:02:13.734782,,EXC004,T1151,near_miss,high,Worker W001 entered swing zone (2.38m).
+INC0047,2026-06-10 11:17:44.964015,,EXC004,T457,near_miss,high,Worker W001 entered swing zone (1.72m).
+INC0048,2026-07-15 13:15:25.721461,,EXC004,T2103,near_miss,high,Worker W004 entered swing zone (0.25m).
+INC0049,2026-07-29 12:57:49.369388,,EXC002,T2740,near_miss,high,Worker W004 entered swing zone (2.89m).
+INC0050,2026-06-07 12:03:36.647643,,EXC008,T337,near_miss,high,Worker W003 entered swing zone (1.47m).
+INC0051,2026-06-20 12:08:20.912832,,EXC004,T910,near_miss,high,Worker W006 entered swing zone (3.26m).
+INC0052,2026-07-13 08:49:57.239709,,EXC001,T1993,near_miss,high,Worker W005 entered swing zone (2.07m).
+INC0053,2026-07-02 08:20:33.332350,,EXC006,T1489,near_miss,high,Worker W001 entered swing zone (4.83m).
+INC0054,2026-07-17 11:47:49.350043,,EXC006,T2197,near_miss,high,Worker W001 entered swing zone (1.14m).
+INC0055,2026-06-18 15:35:43.431388,,EXC007,T834,near_miss,high,Worker W004 entered swing zone (1.67m).
+INC0056,2026-07-24 08:52:50.860569,,EXC007,T2529,near_miss,high,Worker W005 entered swing zone (2.83m).
+INC0057,2026-06-24 07:10:00.000000,,EXC004,T1098,near_miss,high,Worker W001 entered swing zone (4.4m).
+INC0058,2026-07-26 13:08:25.604142,,EXC002,T2597,near_miss,high,Worker W003 entered swing zone (1.55m).
+INC0059,2026-06-24 13:22:12.933629,,EXC004,T1103,near_miss,high,Worker W001 entered swing zone (1.91m).
+INC0060,2026-06-22 12:39:25.413367,,EXC003,T1008,near_miss,high,Worker W003 entered swing zone (2.06m).
+INC0061,2026-07-27 07:50:00.000000,,EXC003,T2641,near_miss,high,Worker W006 entered swing zone (1.02m).
+INC0062,2026-06-06 12:00:10.126732,,EXC006,T279,near_miss,high,Worker W003 entered swing zone (3.82m).
+INC0063,2026-07-17 09:44:27.812444,,EXC005,T2192,near_miss,high,Worker W004 entered swing zone (4.66m).
+INC0064,2026-06-13 12:54:50.237169,,EXC002,T579,near_miss,high,Worker W004 entered swing zone (1.04m).
+INC0065,2026-06-26 14:20:16.072292,,EXC007,T1224,near_miss,high,Worker W006 entered swing zone (1.73m).
+INC0066,2026-06-13 09:19:45.798481,,EXC003,T584,near_miss,high,Worker W005 entered swing zone (1.39m).
+INC0067,2026-07-23 11:44:56.417224,,EXC002,T2457,near_miss,high,Worker W002 entered swing zone (2.6m).
+INC0068,2026-07-30 14:36:21.703285,,EXC007,T2816,near_miss,high,Worker W003 entered swing zone (2.13m).
+INC0069,2026-07-27 09:01:07.862508,,EXC005,T2655,near_miss,high,Worker W005 entered swing zone (1.55m).
+INC0070,2026-07-11 08:17:14.767526,,EXC008,T1942,near_miss,high,Worker W005 entered swing zone (3.06m).
+INC0071,2026-07-12 08:47:17.017060,,EXC002,T1954,near_miss,high,Worker W001 entered swing zone (3.68m).
+INC0072,2026-06-11 10:35:57.286491,,EXC002,T487,near_miss,high,Worker W003 entered swing zone (2.02m).
+INC0073,2026-06-23 13:04:16.031390,,EXC007,T1073,near_miss,high,Worker W006 entered swing zone (3.22m).
+INC0074,2026-07-02 13:21:50.882407,,EXC008,T1503,near_miss,high,Worker W002 entered swing zone (3.62m).
+INC0075,2026-07-18 08:37:22.477406,,EXC007,T2251,near_miss,high,Worker W003 entered swing zone (2.31m).
+INC0076,2026-07-11 10:44:22.227982,,EXC008,T1944,near_miss,high,Worker W006 entered swing zone (1.94m).
+INC0077,2026-07-06 13:19:27.910429,,EXC002,T1658,near_miss,high,Worker W002 entered swing zone (2.41m).
+INC0078,2026-06-28 11:24:27.165810,,EXC004,T1299,near_miss,high,Worker W006 entered swing zone (0.73m).
+INC0079,2026-06-12 10:52:53.504587,,EXC005,T553,near_miss,high,Worker W001 entered swing zone (1.85m).
+INC0080,2026-07-06 07:40:00.000000,,EXC001,T1650,near_miss,high,Worker W004 entered swing zone (0.48m).
+INC0081,2026-06-29 11:26:51.363385,,EXC002,T1334,near_miss,high,Worker W005 entered swing zone (0.63m).
+INC0082,2026-07-15 09:36:48.171259,,EXC005,T2106,near_miss,high,Worker W004 entered swing zone (4.16m).
+INC0083,2026-06-18 07:40:00.000000,,EXC004,T810,near_miss,high,Worker W004 entered swing zone (2.04m).
+INC0084,2026-07-25 07:10:00.000000,,EXC005,T2565,near_miss,high,Worker W004 entered swing zone (1.27m).
+INC0085,2026-07-27 15:18:04.194157,,EXC002,T2639,near_miss,high,Worker W002 entered swing zone (2.64m).
+INC0086,2026-06-27 08:59:20.427386,,EXC003,T1247,near_miss,high,Worker W004 entered swing zone (3.25m).
+INC0087,2026-06-17 10:37:40.691155,,EXC001,T748,near_miss,high,Worker W004 entered swing zone (3.42m).
+INC0088,2026-06-30 09:36:24.860389,,EXC003,T1382,near_miss,high,Worker W006 entered swing zone (2.37m).
+INC0089,2026-07-07 08:09:52.624133,,EXC003,T1710,near_miss,high,Worker W006 entered swing zone (0.68m).
+INC0090,2026-06-19 11:22:45.791986,,EXC002,T850,near_miss,high,Worker W003 entered swing zone (1.56m).
+INC0091,2026-06-19 11:29:52.631520,,EXC001,T846,near_miss,high,Worker W002 entered swing zone (0.67m).
+INC0092,2026-06-30 07:40:00.000000,,EXC005,T1388,near_miss,high,Worker W006 entered swing zone (6.31m).
+INC0093,2026-06-13 09:31:30.227689,,EXC002,T576,near_miss,high,Worker W005 entered swing zone (1.78m).
+INC0094,2026-06-04 11:53:30.329116,,EXC003,T162,near_miss,high,Worker W004 entered swing zone (1.49m).
+INC0095,2026-06-25 09:06:05.704482,,EXC004,T1147,near_miss,high,Worker W005 entered swing zone (0.91m).
+INC0096,2026-07-17 07:40:00.000000,,EXC007,T2199,near_miss,high,Worker W001 entered swing zone (1.94m).
+INC0097,2026-07-18 10:34:54.712626,,EXC006,T2246,near_miss,high,Worker W004 entered swing zone (1.66m).
+INC0098,2026-07-08 07:40:00.000000,,EXC002,T1752,near_miss,high,Worker W004 entered swing zone (1.17m).
+INC0099,2026-07-12 08:23:36.440743,,EXC003,T1959,near_miss,high,Worker W003 entered swing zone (2.91m).
+INC0100,2026-07-18 14:16:19.134077,,EXC002,T2221,near_miss,high,Worker W004 entered swing zone (1.87m).
+INC0101,2026-06-18 11:32:52.516562,,EXC004,T814,near_miss,high,Worker W006 entered swing zone (1.75m).
+INC0102,2026-06-18 11:55:14.663177,,EXC003,T807,near_miss,high,Worker W001 entered swing zone (1.92m).
+INC0103,2026-06-03 07:00:00.000000,,EXC008,T141,near_miss,high,Worker W003 entered swing zone (1.5m).
+INC0104,2026-06-03 13:00:47.718133,,EXC006,T132,near_miss,high,Worker W003 entered swing zone (3.69m).
+INC0105,2026-07-23 08:05:39.953455,,EXC001,T2451,near_miss,high,Worker W004 entered swing zone (2.23m).
+INC0106,2026-06-19 07:20:00.000000,,EXC003,T852,near_miss,high,Worker W002 entered swing zone (2.46m).
+INC0107,2026-06-05 10:05:55.019660,,EXC006,T224,near_miss,high,Worker W005 entered swing zone (1.51m).
+INC0108,2026-07-17 11:21:10.793644,,EXC008,T2209,near_miss,high,Worker W005 entered swing zone (1.25m).
+INC0109,2026-07-11 07:00:00.000000,,EXC008,T1941,near_miss,high,Worker W003 entered swing zone (2.14m).
+INC0110,2026-07-07 08:10:00.000000,,EXC002,T1705,near_miss,high,Worker W002 entered swing zone (3.11m).
+INC0111,2026-06-18 13:51:43.403112,,EXC002,T801,near_miss,high,Worker W004 entered swing zone (0.98m).
+INC0112,2026-06-30 11:43:33.300397,,EXC008,T1409,near_miss,high,Worker W002 entered swing zone (2.36m).
+INC0113,2026-06-30 10:07:41.801611,,EXC008,T1408,near_miss,high,Worker W004 entered swing zone (0.19m).
+INC0114,2026-07-30 13:56:11.831299,,EXC008,T2822,near_miss,high,Worker W003 entered swing zone (1.26m).
+INC0115,2026-06-22 09:29:41.070174,,EXC007,T1027,near_miss,high,Worker W003 entered swing zone (2.73m).
+INC0116,2026-07-05 08:30:00.000000,,EXC002,T1607,near_miss,high,Worker W002 entered swing zone (3.09m).
+INC0117,2026-07-24 17:19:41.103860,,EXC007,T2535,near_miss,high,Worker W005 entered swing zone (2.48m).
+INC0118,2026-06-12 13:08:37.561738,,EXC003,T542,near_miss,high,Worker W002 entered swing zone (3.92m).
+INC0119,2026-07-17 09:02:31.763213,,EXC001,T2169,near_miss,high,Worker W003 entered swing zone (1.44m).
+INC0120,2026-06-23 10:12:28.328358,,EXC004,T1054,near_miss,high,Worker W006 entered swing zone (1.75m).
+INC0121,2026-07-10 07:46:28.522839,,EXC007,T1882,near_miss,high,Worker W004 entered swing zone (1.93m).

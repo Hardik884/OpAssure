@@ -1,0 +1,7 @@
+event_id,operator_id,timestamp,module,trigger,completed,score
+TR0001,OP1005,2026-06-01 08:41:49.873867,seatbelt_awareness,just_in_time,True,52.9
+TR0002,OP1005,2026-06-11 09:02:02.911809,seatbelt_awareness,just_in_time,True,60.3
+TR0003,OP1005,2026-06-26 14:25:24.543079,seatbelt_awareness,just_in_time,True,67.9
+TR0004,OP1005,2026-07-07 12:15:46.015481,seatbelt_awareness,just_in_time,True,74.3
+TR0005,OP1005,2026-07-17 13:58:26.831263,seatbelt_awareness,just_in_time,True,76.5
+TR0006,OP1005,2026-07-30 15:53:37.798555,seatbelt_awareness,just_in_time,True,85.9
