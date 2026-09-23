@@ -403,6 +403,8 @@ human-level or real-world training effectiveness**.
 
 ## How to run everything
 
+**Requires Python 3.10+** (the codebase uses `X | None` union-type syntax). Verified with a clean install against a fresh virtualenv (Python 3.12) — see the production-readiness audit for details.
+
 ```bash
 cd ml
 python -m venv .venv
@@ -585,7 +587,8 @@ schema and how the backend should call this.
 
 ## Tests
 
-`ml/tests/` (123 tests) covers:
+`ml/tests/` (136 tests, all passing — see the production-readiness audit
+below for full verification detail) covers:
 
 - **`test_synthetic.py`** — generation is deterministic (same seed -> byte-identical
   output), every table is non-empty, demo IDs exist and resolve correctly,
@@ -656,6 +659,38 @@ schema and how the backend should call this.
   every tick), that the cached ETA model object is reused (proof nothing
   retrains), and that remaining work strictly decreases across sequential
   updates.
+
+## Production-readiness audit
+
+A full end-to-end audit (data leakage, time-aware evaluation, ETA/interval
+correctness, Habit Radar generalization, JSON serialization, error handling,
+fresh-process artifact loading, clean-environment install, reproducibility,
+and realtime performance) was performed against the actual code and output
+— not just re-running the existing test suite. **6 real issues were found
+and fixed**, each with a regression test:
+
+| # | Issue | Fix |
+|---|---|---|
+| 1 | An out-of-distribution task row could make the raw ETA model prediction negative, and `eta_min`/`eta_max` were clamped independently of `eta_point` — producing a point estimate **outside its own reported range**. | `predict_eta()` floors the raw prediction at 1 minute; `predict_personalized_eta()`/`predict_dynamic_eta()` now also clamp the point estimate into `[eta_min, eta_max]` as a second line of defense. |
+| 2 | `classify_idle()` had no guard against being called on a row that isn't actually idle (`machine_moving=True`) — it fell through to the "unrecognized reason" branch and confidently returned `"avoidable"`, a misleading result. | Added an explicit `idle_type: "not_idle"` result for non-idle rows. |
+| 3 | `generate_operator_state()` never validated `operator_id`/`machine_id` against the data, and a `machine_id` that didn't match the task's real machine was silently accepted — producing an internally inconsistent state. | Added validation: unknown IDs and operator/machine mismatches now raise `ValueError` with a clear message. |
+| 4 | `generate_operator_state()`'s "2nd call" was just as slow as the first (~4.4s) — a Habit Radar internal helper used a per-task Python loop over the full telemetry table (~2s of the total, on every call). | Vectorized the helper (`groupby(...).shift(1)` instead of a per-task loop) — same output, ~30ms instead of ~2s. Also added an optional `features_df` cache parameter so repeat calls can skip the feature-pipeline rebuild too. |
+| 5 | `src.eta.model_io` (the pure inference/loading path) imported path constants from `src.eta.train`, coupling every inference-only caller to the training module's `sklearn` fitting imports. | Both modules now source `MODEL_PATH`/`METADATA_PATH` from `config.py` independently. |
+| 6 | No documented Python version requirement, despite the codebase using `X \| None` union-type syntax (Python 3.10+). | Documented in `requirements.txt` and this README. |
+
+**Verified (not just asserted):**
+- **Clean-environment install + full pipeline**: a fresh virtualenv with only `requirements.txt` installed, data/model artifacts deleted and regenerated from scratch, produced byte-identical results and all 136 tests passing.
+- **Fresh-process model loading**: `load_eta_model()` + `generate_operator_state()` work correctly in a process that never ran training.
+- **JSON serialization**: the full public output of both `generate_operator_state()` and `update_operator_state()` (including a real telemetry row's numpy/NaN-bearing fields as input) serializes with plain `json.dumps()` — no custom encoder needed.
+- **No data leakage**: re-confirmed via `test_features.py`'s no-lookahead checks and a fresh read of every `*_prior` feature's construction.
+- **Hard safety rules**: confirmed unconditional — a habit/alert/weather context can elevate a *non-critical* score but can never downgrade the seatbelt/proximity hard rules (score stays 100, `risk_level` stays `critical`).
+- **Habit Radar generalizes beyond `OP1005`**: a new regression test swaps the anomalous identity to an arbitrary operator and confirms detection follows the actual pattern, not a hardcoded ID.
+- **Performance**: see the table in `docs/integration.md` §7 — realtime updates ~15ms, a cached `generate_operator_state()` call ~270ms.
+
+**Known, real limitations (not hidden):**
+- Idle Shield's task-level accuracy against the synthetic `task_ground_truth` label is ~47% — an honest, explained gap (two different internal signals in the generator), not a defect; the actually-required guarantee (0% false blame on truck-wait idle) holds exactly.
+- `generate_operator_state()`'s cold-call cost (~1.7s, dominated by the one-time `sklearn` import) is real; callers making repeated calls should reuse `tables`/`features_df` as documented in `docs/integration.md`.
+- The residual-quantile ETA interval is only as good as the validation set it's computed from (423 rows currently) — reasonable for this synthetic dataset, but not a claim of calibrated real-world uncertainty.
 
 ## Next step (not done here)
 

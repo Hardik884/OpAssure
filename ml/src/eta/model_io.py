@@ -4,6 +4,13 @@
 script, tests, and eventually the backend — loads the saved artifact through
 `load_eta_model()`, which caches it in-process so repeated calls in the same
 run don't hit disk again.
+
+Deliberately does NOT import `src.eta.train`: this module is the pure
+inference/loading path, and importing the training module would pull in
+its `LinearRegression`/`RandomForestRegressor` fitting code (and re-run
+`build_eta_dataset`'s imports) just to read two path constants. Both
+modules import those paths from `config.py` instead — see
+`config.ETA_MODEL_PATH` / `config.ETA_METADATA_PATH`.
 """
 
 import json
@@ -12,7 +19,9 @@ from dataclasses import dataclass
 import joblib
 
 from src.common import config
-from src.eta.train import METADATA_PATH, MODEL_PATH
+
+MODEL_PATH = config.ETA_MODEL_PATH
+METADATA_PATH = config.ETA_METADATA_PATH
 
 
 @dataclass(frozen=True)

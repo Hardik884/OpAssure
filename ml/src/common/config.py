@@ -22,6 +22,8 @@ GROUND_TRUTH_DIR = DATA_DIR / "ground_truth"
 
 MODELS_DIR = ML_ROOT / "models"
 ETA_MODEL_DIR = MODELS_DIR / "eta"
+ETA_MODEL_PATH = ETA_MODEL_DIR / "model.joblib"
+ETA_METADATA_PATH = ETA_MODEL_DIR / "metadata.json"
 
 for _dir in (RAW_DIR, PROCESSED_DIR, SYNTHETIC_DIR, GROUND_TRUTH_DIR, ETA_MODEL_DIR):
     _dir.mkdir(parents=True, exist_ok=True)

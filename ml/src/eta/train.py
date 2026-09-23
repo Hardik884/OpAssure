@@ -27,8 +27,12 @@ from src.eta.dataset import build_eta_dataset
 from src.evaluation.metrics import regression_metrics
 from src.evaluation.splits import time_aware_split
 
-MODEL_PATH = config.ETA_MODEL_DIR / "model.joblib"
-METADATA_PATH = config.ETA_MODEL_DIR / "metadata.json"
+# Kept as module-level aliases for backward compatibility (existing callers/
+# tests import MODEL_PATH/METADATA_PATH from here) — config.py is now the
+# single source of truth for these paths, so model_io.py (pure inference)
+# doesn't have to import this training module just to find them.
+MODEL_PATH = config.ETA_MODEL_PATH
+METADATA_PATH = config.ETA_METADATA_PATH
 
 
 def get_candidate_models() -> dict[str, object]:

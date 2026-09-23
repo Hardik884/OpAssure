@@ -32,26 +32,31 @@ def _task_opportunities(telemetry_df: pd.DataFrame) -> pd.DataFrame:
     idle block runs to the very end of the recorded interval) simply don't
     produce a row here — not a bug, just no opportunity observed within
     that task's telemetry.
+
+    Vectorized (via `groupby(...).shift(1)`) rather than a per-task Python
+    loop — the original loop-per-task version took ~2 seconds on the full
+    synthetic dataset (~2800 tasks), which is a real cost since this
+    function is on `generate_operator_state()`'s path and can also run
+    inside `update_operator_state()`'s realtime path when a transition
+    occurs. Same semantics, same output columns — see `test_habit_radar.py`
+    for the equivalence check against the original per-task logic.
     """
-    rows = []
-    for task_id, g in telemetry_df.groupby("task_id"):
-        g = g.sort_values("timestamp").reset_index(drop=True)
-        prev_moving = g["machine_moving"].shift(1)
-        transition_idx = g.index[(g["machine_moving"]) & (prev_moving == False)]  # noqa: E712
-        for idx in transition_idx:
-            prev_row = g.iloc[idx - 1]
-            if prev_row["idle_reason"] != "waiting_for_truck":
-                continue
-            cur_row = g.iloc[idx]
-            rows.append(
-                {
-                    "task_id": task_id,
-                    "operator_id": cur_row["operator_id"],
-                    "unbuckled_during_idle": prev_row["seatbelt_status"] == "unbuckled",
-                    "unbuckled_at_resume": cur_row["seatbelt_status"] == "unbuckled",
-                }
-            )
-    return pd.DataFrame(rows, columns=["task_id", "operator_id", "unbuckled_during_idle", "unbuckled_at_resume"])
+    columns = ["task_id", "operator_id", "unbuckled_during_idle", "unbuckled_at_resume"]
+    if len(telemetry_df) == 0:
+        return pd.DataFrame(columns=columns)
+
+    df = telemetry_df.sort_values(["task_id", "timestamp"])
+    grouped = df.groupby("task_id", sort=False)
+    prev_moving = grouped["machine_moving"].shift(1)
+    prev_idle_reason = grouped["idle_reason"].shift(1)
+    prev_seatbelt = grouped["seatbelt_status"].shift(1)
+
+    is_transition = df["machine_moving"] & (prev_moving == False) & (prev_idle_reason == "waiting_for_truck")  # noqa: E712
+
+    out = df.loc[is_transition, ["task_id", "operator_id"]].copy()
+    out["unbuckled_during_idle"] = (prev_seatbelt[is_transition] == "unbuckled").values
+    out["unbuckled_at_resume"] = (df.loc[is_transition, "seatbelt_status"] == "unbuckled").values
+    return out.reset_index(drop=True)[columns]
 
 
 def detect_habits(

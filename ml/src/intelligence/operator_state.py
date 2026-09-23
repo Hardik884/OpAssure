@@ -52,6 +52,7 @@ def generate_operator_state(
     task_id: str,
     current_context: dict | None = None,
     tables: dict | None = None,
+    features_df: pd.DataFrame | None = None,
 ) -> dict:
     """Build the full unified intelligence result for one operator/machine/task.
 
@@ -65,6 +66,16 @@ def generate_operator_state(
     `tables` lets a caller (e.g. `update_operator_state`, or a backend that
     keeps its own cache) pass already-loaded DataFrames instead of hitting
     disk again — safe to omit for a one-off call.
+
+    `features_df` (performance): `build_task_level_dataset()` recomputes
+    expanding-window historical features across the ENTIRE tasks table —
+    the dominant cost of this function (a few seconds on the full synthetic
+    dataset), independent of `tables` reuse. A caller making multiple calls
+    in the same session (e.g. a fleet dashboard, or a demo stepping through
+    several operators) should build it once —
+    `src.features.build_features.build_task_level_dataset(tasks_df,
+    operators_df, machines_df, weather_df, telemetry_df)` — and pass it here
+    on every subsequent call. Safe to omit for a one-off call.
     """
     context = current_context or {}
     tables = tables or _load_tables()
@@ -72,10 +83,27 @@ def generate_operator_state(
     operators_df, machines_df, weather_df = tables["operators"], tables["machines"], tables["weather"]
     tasks_df, telemetry_df, near_misses_df = tables["tasks"], tables["telemetry"], tables["near_misses"]
 
+    if operator_id not in set(operators_df["operator_id"]):
+        raise ValueError(f"Unknown operator_id '{operator_id}'")
+    if machine_id not in set(machines_df["machine_id"]):
+        raise ValueError(f"Unknown machine_id '{machine_id}'")
+
     task_rows = tasks_df[tasks_df["task_id"] == task_id]
     if len(task_rows) == 0:
         raise ValueError(f"Unknown task_id '{task_id}'")
     task_row = task_rows.iloc[0]
+
+    if task_row["machine_id"] != machine_id:
+        raise ValueError(
+            f"machine_id '{machine_id}' does not match task '{task_id}''s actual machine "
+            f"('{task_row['machine_id']}') — this would silently produce an inconsistent state "
+            "(ETA computed for the real machine, diagnosis/briefing filtered to the wrong one)."
+        )
+    if task_row["operator_id"] != operator_id:
+        raise ValueError(
+            f"operator_id '{operator_id}' does not match task '{task_id}''s actual operator "
+            f"('{task_row['operator_id']}')."
+        )
 
     # Default to a genuinely empty ("not started yet") telemetry window — a
     # task's very first telemetry row is recorded exactly AT start_time, so
@@ -90,7 +118,8 @@ def generate_operator_state(
     twin = get_operator_profile(operator_id, tasks_df, telemetry_df, operators_df)
 
     # --- ETA (baseline + personalized) ---------------------------------------
-    features_df = build_task_level_dataset(tasks_df, operators_df, machines_df, weather_df, telemetry_df)
+    if features_df is None:
+        features_df = build_task_level_dataset(tasks_df, operators_df, machines_df, weather_df, telemetry_df)
     task_features_rows = features_df[features_df["task_id"] == task_id]
     if len(task_features_rows) == 0:
         raise ValueError(f"Task '{task_id}' produced no feature row — cannot compute ETA.")
@@ -195,6 +224,7 @@ def generate_operator_state(
         # disk or recomputing the model bundle/features/twin from scratch.
         "_context": {
             "tables": tables,
+            "features_df": features_df,
             "task_features": task_features,
             "eta_bundle": eta_bundle,
             "telemetry_so_far": telemetry_so_far,

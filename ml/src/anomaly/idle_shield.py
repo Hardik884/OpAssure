@@ -19,7 +19,22 @@ def classify_idle(idle_row: pd.Series | dict) -> dict:
 
     Hard rule, never overridden: `idle_reason == "waiting_for_truck"` (or any
     other configured legitimate reason) is always `"legitimate"`.
+
+    Callers are expected to pass an actually-idle row (this is what
+    `classify_task_idle()` below always does, pre-filtering on
+    `idling_time_min > 0`). If a row that's plainly NOT idle is passed in
+    directly (`machine_moving` true, or `idling_time_min` present and 0),
+    this returns `idle_type: "not_idle"` rather than confidently guessing
+    "avoidable" — a moving machine has no idle time to classify at all, and
+    mislabeling it would be a misleading explanation, not a defensible one.
     """
+    if idle_row.get("machine_moving") or (idle_row.get("idling_time_min", 1) == 0):
+        return {
+            "idle_type": "not_idle",
+            "reason": "This telemetry row has no idle time to classify (machine is/was moving).",
+            "confidence": 1.0,
+        }
+
     reason = idle_row.get("idle_reason")
 
     if reason in config.LEGITIMATE_IDLE_REASONS:
@@ -59,8 +74,11 @@ def classify_task_idle(task_id: str, telemetry_df: pd.DataFrame) -> dict:
         result = classify_idle(row)
         if result["idle_type"] == "legitimate":
             legitimate_min += row["idling_time_min"]
-        else:
+        elif result["idle_type"] == "avoidable":
             avoidable_min += row["idling_time_min"]
+        # "not_idle" shouldn't occur here (idle_rows is already filtered to
+        # idling_time_min > 0), but if it ever does, skip rather than
+        # mis-attribute it to either bucket.
 
     total_min = legitimate_min + avoidable_min
     dominant = "legitimate" if legitimate_min >= avoidable_min else "avoidable"

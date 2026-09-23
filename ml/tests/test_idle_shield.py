@@ -68,3 +68,40 @@ def test_ground_truth_evaluation_reports_precision_recall(tables):
     for metric in ("accuracy", "precision", "recall", "f1", "false_positive_rate"):
         assert metric in report
         assert 0.0 <= report[metric] <= 1.0
+
+
+def test_classify_idle_on_a_moving_row_does_not_mislabel_it_as_idle():
+    """Regression test (production audit): a row where the machine is
+    actually moving (no idle time to classify at all) used to fall through
+    to the "unrecognized reason" branch and come back confidently labeled
+    "avoidable" — misleading, since there's no idle time here to blame on
+    anyone. It must now report idle_type: "not_idle" instead."""
+    moving_row = {"idle_reason": float("nan"), "machine_moving": True, "idling_time_min": 0}
+    result = classify_idle(moving_row)
+    assert result["idle_type"] == "not_idle"
+
+
+def test_classify_idle_on_a_zero_duration_idle_row_is_not_idle():
+    stationary_but_zero_duration = {"idle_reason": None, "machine_moving": False, "idling_time_min": 0}
+    result = classify_idle(stationary_but_zero_duration)
+    assert result["idle_type"] == "not_idle"
+
+
+def test_classify_idle_still_works_without_machine_moving_or_idling_time_min():
+    """Backward compatibility: callers that only pass idle_reason (no
+    machine_moving/idling_time_min fields) must still classify normally."""
+    result = classify_idle({"idle_reason": "waiting_for_truck"})
+    assert result["idle_type"] == "legitimate"
+
+
+def test_classify_task_idle_never_counts_not_idle_rows_toward_either_bucket(tables):
+    """A task with zero real idle time (every row) must report zero for
+    both buckets, not accidentally attribute a "not_idle" row to
+    "avoidable"."""
+    from src.anomaly.idle_shield import classify_task_idle
+
+    idle_minutes_per_task = tables["telemetry"].groupby("task_id")["idling_time_min"].sum()
+    no_idle_task = idle_minutes_per_task[idle_minutes_per_task == 0].index[0]
+    result = classify_task_idle(no_idle_task, tables["telemetry"])
+    assert result["avoidable_idle_min"] == 0.0
+    assert result["legitimate_idle_min"] == 0.0

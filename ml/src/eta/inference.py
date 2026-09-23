@@ -19,11 +19,22 @@ from src.eta.model_io import EtaModelBundle, load_eta_model
 from src.eta.remaining_work import calculate_remaining_work
 
 
+MIN_ETA_MIN = 1.0  # a task can't logically take less than ~1 minute; also the floor used below
+
+
 def predict_eta(task_features: pd.Series, model_bundle: EtaModelBundle | None = None) -> float:
-    """Point prediction only (minutes). The simplest possible call."""
+    """Point prediction only (minutes). The simplest possible call.
+
+    Floored at `MIN_ETA_MIN`: a linear model has no output bound, so a
+    sufficiently out-of-distribution input (e.g. near-zero estimated
+    buckets/volume) can otherwise predict a negative duration. Every other
+    ETA number (personalized range, dynamic ETA) is derived from this call,
+    so flooring it here fixes the root cause everywhere at once.
+    """
     bundle = model_bundle or load_eta_model()
     X = task_features[bundle.feature_columns].to_frame().T
-    return float(bundle.model.predict(X)[0])
+    raw = float(bundle.model.predict(X)[0])
+    return max(MIN_ETA_MIN, raw)
 
 
 def predict_personalized_eta(
@@ -44,8 +55,14 @@ def predict_personalized_eta(
     point = predict_eta(task_features, bundle)
 
     q = bundle.residual_quantile_offsets
-    eta_min = max(1.0, point + q["q_low"])
+    eta_min = max(MIN_ETA_MIN, point + q["q_low"])
     eta_max = max(eta_min, point + q["q_high"])
+    # Defensive: the point estimate must lie within its own reported range.
+    # This is structurally true whenever q_high >= 0 (the usual case), but
+    # not guaranteed if a future retrain ever produces a negative q_high
+    # (systematic over-prediction on the validation set) — clamp explicitly
+    # rather than relying on that being true by luck of the current data.
+    point = min(max(point, eta_min), eta_max)
 
     remaining = calculate_remaining_work(task_features, telemetry_so_far)
 

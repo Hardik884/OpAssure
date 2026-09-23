@@ -79,6 +79,11 @@ def predict_dynamic_eta(
     q = bundle.residual_quantile_offsets
     eta_min = max(elapsed_min, point + q["q_low"] * remaining_fraction)
     eta_max = max(eta_min, point + q["q_high"] * remaining_fraction)
+    # Defensive, same reasoning as predict_personalized_eta(): keep the
+    # point estimate inside its own reported range regardless of the sign
+    # of q_high (not structurally guaranteed if a future retrain ever
+    # produces a negative one).
+    point = min(max(point, eta_min), eta_max)
 
     weather_row = {"condition": task_features.get("weather")}
     explanation = build_eta_explanation(

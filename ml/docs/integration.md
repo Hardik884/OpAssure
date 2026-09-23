@@ -37,15 +37,24 @@ retrained by calling it.
 ## 2. Main entry point
 
 ```python
-state = generate_operator_state(operator_id, machine_id, task_id, current_context=None)
+state = generate_operator_state(operator_id, machine_id, task_id, current_context=None, tables=None, features_df=None)
 ```
 
-- `operator_id`, `machine_id`, `task_id`: strings, e.g. `"OP1001"`, `"EXC001"`, `"T001"`.
+- `operator_id`, `machine_id`, `task_id`: strings, e.g. `"OP1001"`, `"EXC001"`, `"T001"`. Must be **mutually consistent** — `machine_id`/`operator_id` must match `task_id`'s actual recorded machine/operator in `tasks.csv`, or the call raises `ValueError` (a mismatch would otherwise silently produce a state where the ETA is computed for the task's real machine but the diagnosis/briefing sections are filtered to a different one).
 - `current_context` (optional dict):
   - `as_of` (`pandas.Timestamp`): point in time to evaluate Focus Battery at. Defaults to the task's own `start_time`.
   - `telemetry_so_far` (`pandas.DataFrame`): telemetry recorded for this task so far, same shape as the `telemetry` table. **Omit this (or pass `None`) for a task that hasn't started yet** — the default is an empty window, not "everything recorded up to now" (a subtle but important distinction; see the code comment in `operator_state.py` if curious why).
+- `tables` / `features_df` (optional, performance): see §7's timing table — pass these back in on repeat calls (e.g. a fleet dashboard listing several operators) to skip a multi-second data-load-and-feature-rebuild. Both are handed back in the returned state's `_context` for exactly this purpose:
+  ```python
+  first = generate_operator_state("OP1001", "EXC001", "T001")
+  second = generate_operator_state(
+      "OP1011", "EXC004", "T500",
+      tables=first["_context"]["tables"],
+      features_df=first["_context"]["features_df"],
+  )  # ~15x faster than a cold call
+  ```
 
-Raises `ValueError` if `task_id` doesn't exist in `tasks.csv`.
+Raises `ValueError` for an unknown `operator_id`, `machine_id`, or `task_id`, or for a `machine_id`/`operator_id` that doesn't match `task_id`'s real assignment.
 
 ## 3. Input JSON schema
 
@@ -161,6 +170,24 @@ these itself, per the project's "never silently fabricate results" rule.
   Diagnosis, Training) has a trained model to load — they're all
   deterministic rules/statistics computed directly from the tables at call
   time.
+
+### Measured performance (production-readiness audit, full ~2,800-task dataset)
+
+| Call | Time | Notes |
+|---|---|---|
+| `load_eta_model()` — first call | ~1.3s | One-time cost (first `sklearn` import + disk read); cached after that, effectively 0ms on repeat calls. |
+| `predict_eta()` (single point prediction) | ~2ms | |
+| `generate_operator_state()` — cold (nothing cached) | ~1.7s | Dominated by the one-time model load above. |
+| `generate_operator_state()` — repeat call, `tables`/`features_df` reused | **~270ms** | See §2 — pass these back in for a fleet view / repeated calls in one session. |
+| `update_operator_state()` (one realtime telemetry tick) | **~15ms** | The realtime path — never retrains, never reloads data. Safe for a live demo. |
+
+A real bug found during the audit: the pre-fix `generate_operator_state()`
+took **~4.4 seconds per call, even on a second call with nothing changed**,
+because a Habit Radar internal helper used a per-task Python loop over the
+full telemetry table (~2s of that alone). It's now vectorized (~30ms for
+the same computation) — see the "Behaviour + Safety Intelligence subsystem"
+section of `ml/README.md` and `tests/test_habit_radar.py`'s performance
+regression test.
 
 ## 8. Example: OP1001 / EXC001 / T001
 

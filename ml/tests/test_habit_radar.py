@@ -112,3 +112,41 @@ def test_real_synthetic_data_flags_exactly_the_planted_operator(tables):
     results = detect_habits(tables["telemetry"])
     flagged = {r["operator_id"] for r in results if r["is_habit"]}
     assert config.SEATBELT_HABIT_OPERATOR_ID in flagged
+
+
+def test_detection_generalizes_to_whichever_operator_is_anomalous(tables):
+    """Production audit requirement: the algorithm must not be secretly
+    hardcoded to OP1005's identity or frequency value. Swap the anomalous
+    identity to a different, arbitrary operator (built from scratch, not the
+    real generator) and confirm detection follows the ACTUAL pattern, not a
+    hardcoded ID — using the same fleet size/shape as the real 20-operator
+    dataset so the z-score statistics behave realistically."""
+    rows = []
+    anomalous_id = "OP_ZZZ_NOT_A_REAL_DEMO_ID"
+    for i in range(10):
+        rows += _build_opportunity_rows(f"Tanom{i}", anomalous_id, unbuckled_idle=True, unbuckled_resume=True)
+    for op_index in range(19):
+        op = f"OP_NORMAL{op_index}"
+        for j in range(5):
+            rows += _build_opportunity_rows(f"T{op}_{j}", op, unbuckled_idle=False, unbuckled_resume=False)
+
+    telemetry_df = pd.DataFrame(rows)
+    results = detect_habits(telemetry_df)
+    flagged = {r["operator_id"] for r in results if r["is_habit"]}
+
+    assert flagged == {anomalous_id}
+    assert config.SEATBELT_HABIT_OPERATOR_ID not in flagged  # not just always returning the demo ID
+
+
+def test_detection_is_fast_on_the_full_dataset(tables):
+    """Regression test (production audit): the original per-task Python
+    loop in _task_opportunities() took ~2 seconds on the full ~2,800-task
+    synthetic dataset — a real risk since this can also run inside
+    update_operator_state()'s realtime path when a transition occurs. The
+    vectorized rewrite should complete in well under a second."""
+    import time
+
+    start = time.perf_counter()
+    detect_habits(tables["telemetry"])
+    elapsed = time.perf_counter() - start
+    assert elapsed < 1.0, f"detect_habits() took {elapsed:.2f}s on the full dataset — expected well under 1s"

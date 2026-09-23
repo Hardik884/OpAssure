@@ -82,3 +82,48 @@ def test_no_values_are_none_where_a_real_result_is_expected():
     assert state["eta"]["eta_point"] is not None
     assert state["operator_twin"]["paceFactor"] is not None
     assert state["risk"]["risk_level"] is not None
+
+
+def test_works_for_non_demo_operator_machine_task_combinations(tables):
+    """Regression test (production audit): confirms the function is not
+    secretly hardcoded to OP1001/EXC001/T001 — two other real, consistent
+    (operator, machine, task) triples from the generated data must work
+    identically well."""
+    tasks_df = tables["tasks"]
+    sample = tasks_df[tasks_df["task_id"].isin(["T500", "T1500"])]
+    assert len(sample) == 2  # sanity: these tasks exist in the current dataset
+
+    for _, row in sample.iterrows():
+        state = generate_operator_state(row["operator_id"], row["machine_id"], row["task_id"])
+        assert state["operator_id"] == row["operator_id"]
+        assert state["machine_id"] == row["machine_id"]
+        assert state["task_id"] == row["task_id"]
+        assert state["eta"]["eta_point"] > 0
+        assert state["risk"]["risk_level"] in ("low", "medium", "high", "critical")
+
+
+def test_unknown_operator_id_raises_clear_error():
+    """Regression test (production audit): previously silently fell back to
+    fleet-neutral defaults for a nonexistent operator instead of raising —
+    now fails clearly, matching the existing unknown-task_id behavior."""
+    with pytest.raises(ValueError, match="Unknown operator_id"):
+        generate_operator_state("OP_DOES_NOT_EXIST", config.DEMO_MACHINE_ID, config.DEMO_TASK_ID)
+
+
+def test_unknown_machine_id_raises_clear_error():
+    with pytest.raises(ValueError, match="Unknown machine_id"):
+        generate_operator_state(config.DEMO_OPERATOR_ID, "EXC_DOES_NOT_EXIST", config.DEMO_TASK_ID)
+
+
+def test_mismatched_machine_for_task_raises_clear_error():
+    """Regression test (production audit): a machine_id that doesn't match
+    the task's actual machine used to be silently accepted, producing an
+    internally inconsistent state (ETA computed for the task's real
+    machine, but diagnosis/briefing filtered to the caller-supplied one)."""
+    with pytest.raises(ValueError, match="does not match task"):
+        generate_operator_state(config.DEMO_OPERATOR_ID, "EXC004", config.DEMO_TASK_ID)
+
+
+def test_mismatched_operator_for_task_raises_clear_error():
+    with pytest.raises(ValueError, match="does not match task"):
+        generate_operator_state("OP1002", config.DEMO_MACHINE_ID, config.DEMO_TASK_ID)

@@ -1,5 +1,7 @@
 """Tests for ETA model training, selection, and point/interval inference."""
 
+import sys
+
 import pandas as pd
 
 from src.common import config
@@ -92,3 +94,46 @@ def test_fast_vs_slow_task_produce_different_personalized_eta(tables, eta_bundle
         for i in range(10)
     ]
     assert len(set(preds)) > 1
+
+
+def test_eta_point_stays_within_its_own_range_for_extreme_inputs(tables, eta_bundle):
+    """Regression test (production audit): an out-of-distribution row
+    (near-zero estimated buckets/volume and zero historical aggregates) used
+    to make the raw linear-model prediction go negative, while eta_min/eta_max
+    were independently clamped — producing eta_point OUTSIDE [eta_min,
+    eta_max] and even negative. predict_eta() now floors the raw prediction,
+    and predict_personalized_eta() clamps eta_point into its own range as a
+    second line of defense regardless of quantile sign."""
+    features_df, _, _ = _build(tables)
+    row = features_df.iloc[0].copy()
+    row["estimated_buckets"] = 0
+    row["volume_m3"] = 0.001
+    row["operator_avg_actual_time_min_prior"] = 0
+    row["machine_avg_actual_time_min_prior"] = 0
+    row["operator_tasks_completed_prior"] = 0
+
+    point = predict_eta(row, eta_bundle)
+    assert point >= 1.0  # MIN_ETA_MIN floor — never negative or zero
+
+    twin = {"paceFactor": 1.0, "afternoonEffect": 0.0}
+    result = predict_personalized_eta(row, twin, model_bundle=eta_bundle)
+    assert result["eta_min"] <= result["eta_point"] <= result["eta_max"]
+    assert result["eta_min"] >= 0
+
+
+def test_model_io_does_not_import_the_training_module():
+    """Regression test (production audit): model_io.py (the pure inference/
+    loading path) previously imported MODEL_PATH/METADATA_PATH from train.py,
+    coupling every inference-only caller to the training module's sklearn
+    fitting imports. Both now source these paths from config.py independently."""
+    for mod in ("src.eta.model_io", "src.eta.train"):
+        sys.modules.pop(mod, None)
+
+    import src.eta.model_io as model_io_module
+
+    assert "src.eta.train" not in sys.modules, (
+        "importing src.eta.model_io pulled in src.eta.train — the inference "
+        "path should not depend on the training module."
+    )
+    assert model_io_module.MODEL_PATH == config.ETA_MODEL_PATH
+    assert model_io_module.METADATA_PATH == config.ETA_METADATA_PATH
