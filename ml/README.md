@@ -3,9 +3,11 @@
 **Owner:** AI/ML developer
 **Stack:** Python, pandas, numpy, scikit-learn
 
-> **Status:** data foundation + the ETA / Operator Twin subsystem are built and
-> tested. Habit Radar, Idle Shield, Focus Battery, safety risk intelligence, and
-> training recommendations are **not** implemented yet — that's the next step.
+> **Status:** data foundation, ETA / Operator Twin, and the Behaviour + Safety
+> Intelligence subsystem (Habit Radar, Idle Shield, Focus Battery, risk
+> intelligence, machine-vs-operator diagnosis) are built and tested.
+> Just-in-Time Micro Training recommendations, LLM explanations, and the
+> Pre-Task Threat Briefing are **not** implemented yet — that's the next step.
 > See `CLAUDE.md` §11 for ML principles and §8 for the priority system.
 
 ## What this is
@@ -174,6 +176,116 @@ one would be exactly the kind of fabricated number the project forbids.
 each factor tied to a measurable input (weather, operator pace, machine age,
 observed cycle-time change vs. plan, afternoon fatigue) — no LLM involved.
 
+## Behaviour + Safety Intelligence subsystem
+
+```
+src/anomaly/
+  habit_radar.py       detect_habits(), get_habit_summary()
+  idle_shield.py        classify_idle(), classify_task_idle()
+  diagnosis.py           diagnose_fuel_source()
+
+src/safety/
+  focus_battery.py      calculate_focus(), get_focus_recommendation()
+  risk.py                 calculate_risk(), get_risk_factors()
+
+src/evaluation/
+  behaviour_eval.py     evaluate_habit_radar(), evaluate_idle_shield(),
+                          evaluate_diagnosis(), evaluate_seatbelt_critical_detection(),
+                          evaluate_all()
+```
+
+All of these consume the existing loaders/feature pipeline/Operator Twin
+as-is — no second feature-engineering pipeline was created.
+
+### Habit Radar
+
+Detects the planted **seatbelt-during-truck-wait** pattern: seatbelt removed
+during an idle wait, still unfastened the moment the machine starts moving
+again. A task's telemetry has at most one contiguous idle block, so a
+task-level idle→moving transition after a `waiting_for_truck` idle reason is
+exactly one *opportunity*; a deterministic per-task scan finds these without
+needing general sequence-mining (PrefixSpan etc.) for this single fixed
+pattern.
+
+**A single event is never a habit.** `detect_habits()` requires all of:
+`opportunities >= HABIT_MIN_OPPORTUNITIES` (3), `count >= HABIT_MIN_COUNT`
+(2), **and** the operator's frequency being a statistical outlier vs. the
+rest of the fleet (`z_score >= HABIT_Z_THRESHOLD`, default 2.0). The z-score
+bar is relative, not a fixed absolute rate — the generator re-samples the
+seatbelt state every 5 minutes during an idle block rather than once per
+idle period, so even a low-probability operator can occasionally rack up a
+non-trivial raw frequency; what distinguishes a genuine habit is standing
+out from peers, not clearing an arbitrary number.
+
+### Idle Shield
+
+`classify_idle()` reads the telemetry's own `idle_reason` field (a real,
+legitimately-available column — not a hidden generator secret) and returns
+`{"idle_type": "legitimate"|"avoidable", "reason": str, "confidence": float}`.
+
+**Hard, unconditional no-blame rule:** any idle reason in
+`config.LEGITIMATE_IDLE_REASONS` (`waiting_for_truck`, `waiting_for_instruction`,
+`break`) is *always* `"legitimate"` — this is never a learned weight that
+could get overridden. `classify_task_idle()` aggregates a task's idle
+minutes into a dominant type for task-level evaluation.
+
+### Focus Battery
+
+`calculate_focus()` returns a deterministic 0-100 **operational workload
+indicator** — explicitly not a medical/clinical fatigue measurement (see the
+`disclaimer` field on every result). It's built from continuous work hours,
+time of day, heat (weighted by the operator's own `heatSensitivity` from
+their Twin), historical afternoon slowdown (`afternoonEffect` from the
+Twin), recent cycle-time deterioration, and repetitive task count.
+`get_focus_recommendation()` adds a break suggestion when the score is low.
+
+### Risk intelligence
+
+`calculate_risk()` is a contextual layer **on top of** two hard,
+non-negotiable safety rules that no score can downgrade:
+
+1. machine moving + seatbelt unfastened → always `"critical"`
+2. a worker inside the swing-zone radius while the machine is moving →
+   always `"critical"`
+
+Only when neither hard rule fires does it compute a contextual 0-100 score
+from softer signals (recent safety alerts, a detected Habit Radar pattern,
+weather, machine degradation, "somewhat close" proximity) into
+low/medium/high. Every result carries `hard_rule_triggered` so callers (and
+tests) can verify which path produced it.
+
+### Machine vs. operator fuel diagnosis
+
+`diagnose_fuel_source()` distinguishes a machine burning extra fuel for
+everyone who runs it from an operator burning extra fuel on every machine
+they run — each requires evidence across `>= DIAGNOSIS_MIN_DISTINCT_ENTITIES`
+(3) of the other entity type at `>= DIAGNOSIS_ELEVATED_RATIO` (15%) above
+the fleet average, with the elevation showing up for most (not just one) of
+those entities.
+
+### Evaluating against ground truth
+
+`run_behaviour_pipeline.py` prints the full evaluation report. Summary from
+the current generated dataset:
+
+| Check | Result |
+|---|---|
+| Habit Radar flags exactly `OP1005` | precision/recall/F1 = 1.0/1.0/1.0, 0 false positives |
+| Idle Shield legitimate-idle falsely blamed on operator | **0 / 1126 truck-wait tasks (0.0%)** — the critical no-blame guarantee |
+| Idle Shield task-level accuracy vs. `task_ground_truth` | 47% (see note below — not a `classify_idle()` defect) |
+| Diagnosis flags `EXC002` (machine) and `OP1010` (operator) | both correctly flagged, 0 false positives |
+| Hard critical-risk rule vs. telemetry's own `safety_alert` | precision/recall = 1.0/1.0 (sanity check — should be ~perfect by construction) |
+
+**Why Idle Shield's task-level accuracy is only ~47%, honestly explained:**
+`classify_idle()` uses `idle_reason`, the only per-row signal real telemetry
+provides. `task_ground_truth.is_legitimate_idle_dominant` was computed by
+the generator from a *different*, finer-grained internal signal (planned vs.
+"extra" idle minutes) that isn't exposed in telemetry either — a real
+deployment wouldn't have it available any more than `classify_idle()` does.
+The gap is a genuinely harder, more realistic evaluation, not a coding
+defect — and it never compromises the actually-required guarantee: the
+truck-wait no-blame rate above, which is exactly 0%.
+
 ## How to run everything
 
 ```bash
@@ -195,14 +307,18 @@ python run_eta_pipeline.py --train
 # Once a model is saved, just run the demo without retraining:
 python run_eta_pipeline.py --demo-only
 
+# Run Habit Radar / Idle Shield / Focus Battery / risk / diagnosis:
+# ground-truth evaluation report + the OP1001/EXC001/T001 demo:
+python run_behaviour_pipeline.py
+
 # Run the test suite:
 python -m pytest tests/ -v
 ```
 
 `run_pipeline.py` prints a summary (row counts per table, feature matrix
 shape, split sizes, and a demo-scenario check) and exits non-zero on any
-error — safe to wire into `/demo-check`. `run_eta_pipeline.py` does the same
-for training + inference.
+error — safe to wire into `/demo-check`. `run_eta_pipeline.py` and
+`run_behaviour_pipeline.py` do the same for their respective subsystems.
 
 ### Inference interface (for the backend)
 
@@ -259,9 +375,70 @@ the deterministic demo scenario:
 (Exact numbers depend on the seed and current dataset — this is illustrative,
 not a hardcoded claim; run it yourself to see the live values.)
 
+### Behaviour + Safety inference interface (for the backend)
+
+```python
+from src.anomaly.habit_radar import detect_habits, get_habit_summary
+from src.anomaly.idle_shield import classify_idle, classify_task_idle
+from src.anomaly.diagnosis import diagnose_fuel_source
+from src.safety.focus_battery import calculate_focus, get_focus_recommendation
+from src.safety.risk import calculate_risk, get_risk_factors
+```
+
+`get_habit_summary()` and `classify_idle()`/`classify_task_idle()` take
+telemetry rows/DataFrames directly (no feature pipeline needed).
+`calculate_focus()` takes an `as_of` timestamp, `tasks_df`, `weather_df`, and
+an Operator Twin profile (from `get_operator_profile()`). `calculate_risk()`
+takes plain scalar context (seatbelt status, machine-moving flag, nearest
+worker distance, recent alert count, weather, habit/degradation flags) — no
+DataFrame required, so the backend can call it straight from a live
+telemetry event.
+
+**Output schema** — `calculate_risk()`:
+
+```json
+{
+  "risk_level": "critical",
+  "score": 100,
+  "factors": ["seatbelt_unfastened_while_moving"],
+  "explanation": "Machine is moving with the seatbelt unfastened — critical, non-negotiable.",
+  "hard_rule_triggered": "seatbelt_unfastened_while_moving"
+}
+```
+
+`get_habit_summary()`:
+
+```json
+{
+  "operator_id": "OP1005",
+  "habit_type": "seatbelt_during_truck_wait",
+  "count": 7,
+  "opportunities": 33,
+  "frequency": 0.212,
+  "z_score": 3.09,
+  "is_habit": true,
+  "explanation": "Seatbelt was repeatedly removed during truck waits and remained unfastened when movement resumed, at a rate well above the rest of the fleet (7 of 33 truck-wait opportunities, 21%, z=3.1 vs. fleet average 8%)."
+}
+```
+
+### Example: OP1001 / EXC001 / T001 (Behaviour + Safety)
+
+Running `python run_behaviour_pipeline.py` prints, for the demo scenario
+(illustrative — run it yourself for live values):
+
+```
+1) Habit Radar for OP1001: is_habit=False (3/58 opportunities, 5.2%, z=-0.6
+   — normal, not flagged)
+2) Idle Shield for task T001: dominant_idle_type=avoidable (5.0 min, non-truck task)
+3) Focus Battery for OP1001 at shift start: score=100, factors=[] (fresh shift, no penalties)
+4) Risk intelligence for task T001: risk_level=low, score=10, no hard rule triggered
+5) Diagnosis: OP1010 flagged (operator, +31% fuel across 8 machines),
+   EXC002 flagged (machine, +29% fuel across 20 operators)
+```
+
 ## Tests
 
-`ml/tests/` (48 tests) covers:
+`ml/tests/` (83 tests) covers:
 
 - **`test_synthetic.py`** — generation is deterministic (same seed -> byte-identical
   output), every table is non-empty, demo IDs exist and resolve correctly,
@@ -292,9 +469,29 @@ not a hardcoded claim; run it yourself to see the live values.)
   scenario is correctly detected and explained, interval width shrinks as a
   task nears completion, and the explanation module's factor directions are
   correct for rain / an old machine / a fast operator.
+- **`test_habit_radar.py`** — a constructed repeated pattern is detected, a
+  single event is never flagged, frequency math is exact, and the real
+  dataset flags exactly the planted operator (`OP1005`), no one else.
+- **`test_idle_shield.py`** — every legitimate idle reason classifies
+  correctly, the hard no-blame rule holds for every variant of extra context
+  on the row, a 500-row sample of real truck-wait telemetry never gets
+  blamed, and the ground-truth evaluation reports a 0% false-blame rate.
+- **`test_focus_battery.py`** — normal/prolonged-work/heat/afternoon
+  scenarios move the score in the right direction, the score is bounded
+  0-100 even under deliberately extreme inputs, and the disclaimer is always
+  present and non-medical.
+- **`test_risk.py`** — safe/medium scenarios score as expected, both hard
+  rules (seatbelt, proximity) independently and jointly force `critical`
+  with `score=100` regardless of how "fine" every contextual factor looks,
+  and the hard rule reproduces the dataset's own `safety_alert` column with
+  ~perfect precision/recall.
+- **`test_diagnosis.py`** — the planted degrading machine (`EXC002`) and
+  inefficient operator (`OP1010`) are both correctly flagged with zero false
+  positives, and raising the minimum-entity bar shrinks results without
+  erroring.
 
 ## Next step (not done here)
 
-Habit Radar, Idle Shield, Focus Battery, safety risk intelligence, and
-training recommendation models — intentionally out of scope for this step
-per the task instructions.
+Just-in-Time Micro Training recommendations, LLM-generated explanations, and
+the Pre-Task Threat Briefing — intentionally out of scope for this step per
+the task instructions.

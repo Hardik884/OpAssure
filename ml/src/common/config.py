@@ -99,3 +99,39 @@ OPERATOR_TWIN_SHRINKAGE_K = 5
 # isn't available for some reason (it normally is — operators.csv has it).
 DEFAULT_AFTERNOON_HOUR = 13
 HEAT_TEMP_THRESHOLD_C = 30.0
+
+# ---------------------------------------------------------------------------
+# Habit Radar
+# ---------------------------------------------------------------------------
+
+LEGITIMATE_IDLE_REASONS = {"waiting_for_truck", "waiting_for_instruction", "break"}
+AVOIDABLE_IDLE_REASONS = {"unnecessary", "unnecessary_engine_running"}
+
+# "A single unsafe event is NOT a habit" — all three thresholds must be met
+# before detect_habits() flags something as an actual habit. The frequency
+# bar is relative (z-score vs. the fleet), not a fixed absolute rate — see
+# src/anomaly/habit_radar.py's docstring for why.
+HABIT_MIN_OPPORTUNITIES = 3
+HABIT_MIN_COUNT = 2
+HABIT_Z_THRESHOLD = 2.0
+
+# ---------------------------------------------------------------------------
+# Focus Battery
+# ---------------------------------------------------------------------------
+
+FOCUS_BREAK_GAP_MIN = 20  # a gap this long between tasks counts as a break
+FOCUS_REPETITIVE_TASK_THRESHOLD = 5  # tasks completed today before workload counts as repetitive
+
+# ---------------------------------------------------------------------------
+# Risk intelligence
+# ---------------------------------------------------------------------------
+
+RISK_PROXIMITY_ELEVATED_MULTIPLIER = 2.0  # within N x swing-zone radius = elevated (not yet critical)
+RISK_LEVEL_BANDS = (("critical", 85), ("high", 60), ("medium", 30))  # else "low"
+
+# ---------------------------------------------------------------------------
+# Machine vs. operator fuel diagnosis
+# ---------------------------------------------------------------------------
+
+DIAGNOSIS_MIN_DISTINCT_ENTITIES = 3  # need evidence across >= this many operators/machines
+DIAGNOSIS_ELEVATED_RATIO = 1.15  # 15% above fleet average fuel/moving-min to flag
