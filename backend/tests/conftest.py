@@ -1,5 +1,12 @@
 """Shared fixtures. DB tests use TEST_DATABASE_URL only (reseeded here), never DATABASE_URL."""
 
+import os
+
+# Must be set before `with TestClient(app)` ever enters the app's lifespan (test_realtime.py
+# does this directly): several tests drive replay start/stop/reset themselves and would
+# conflict with an auto-started replay racing against them on the shared `replay_engine`.
+os.environ["AUTO_START_REPLAY"] = "false"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text

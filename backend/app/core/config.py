@@ -53,3 +53,10 @@ def get_replay_interval_seconds() -> float:
         return max(0.0, float(os.getenv("REPLAY_INTERVAL_SECONDS") or 3.0))
     except ValueError:
         return 3.0
+
+
+def get_auto_start_replay() -> bool:
+    """AUTO_START_REPLAY: start the T001 replay the moment the app boots (default true),
+    so the demo visibly moves without a manual POST /demo/start. The test suite sets this
+    to "false" (tests/conftest.py) since several tests drive replay start/stop themselves."""
+    return (os.getenv("AUTO_START_REPLAY") or "true").strip().lower() not in ("false", "0", "no")

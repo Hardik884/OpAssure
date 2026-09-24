@@ -14,7 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api import (
     demo, incidents, insights, judge, machines, ml_input, operators, safety, tasks, telemetry, training, weather,
 )
-from app.core.config import get_cors_origins
+from app.core.config import get_auto_start_replay, get_cors_origins
 from app.core.errors import register_error_handlers
 from app.db.session import DatabaseNotConfiguredError, get_engine
 from app.websocket import routes as ws_routes
@@ -26,6 +26,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if get_auto_start_replay():
+        try:
+            await demo.replay_engine.start()  # demo data should visibly move without a manual step
+        except Exception:  # noqa: BLE001 - DB not ready yet, etc.; the app still starts, just idle
+            logger.exception("Could not auto-start the T001 replay on boot")
     yield
     await demo.replay_engine.stop()  # clean shutdown of a running replay
 
