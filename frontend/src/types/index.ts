@@ -231,3 +231,42 @@ export interface HistoryEntry {
   /** The most notable safety/event indicator for this task, if any (e.g. "proximity"). */
   safetyNote: string | null;
 }
+
+/* ================================================================
+ * Athlete Card + Training Impact — additive, sourced from the same
+ * operator_twin/training_events data OperatorInsight and TrainingRecommendation
+ * already read; never computed or invented in the UI (CLAUDE.md §1 principle 5).
+ * ================================================================ */
+
+/** The operator's full "stat card" — every number here is the ML layer's, presented, not derived. */
+export interface AthleteProfile {
+  operatorId: string;
+  name: string;
+  skill: string;
+  machineType: string;
+  gamesPlayed: number; // nTasks
+  paceFactor: number;
+  rainSensitivity: number;
+  heatSensitivity: number;
+  fuelEfficiency: number;
+  seatbeltViolationRate: number;
+  riskLevel: RiskLevel;
+}
+
+/**
+ * One measured before/after training case (GET /training/impact) — a real
+ * pair of numbers from training_events, never a modeled/projected estimate.
+ * Absent until a training completion has both a before and a measured after
+ * value on record.
+ */
+export interface TrainingImpactCase {
+  operatorId: string;
+  operatorName: string;
+  clipTitle: string;
+  metricName: string;
+  timestamp: string;
+  beforeMetric: number;
+  afterMetric: number;
+  /** (after - before) / before. Negative = improvement for every current metric. */
+  pctChange: number | null;
+}

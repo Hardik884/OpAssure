@@ -133,3 +133,21 @@ class TrainingCompleteIn(BaseModel):
 class TrainingCompleteOut(BaseModel):
     training_event: TrainingEventOut
     created: bool  # false when an existing assigned training was marked complete
+
+
+class TrainingImpactCaseOut(BaseModel):
+    """One measured before/after pair — real numbers from training_events, never modeled."""
+
+    operator_id: str
+    operator_name: str
+    trigger: str
+    clip_title: str
+    metric_name: str
+    timestamp: datetime
+    before_metric: float
+    after_metric: float
+    pct_change: float | None  # (after - before) / before; negative = improvement for every current metric
+
+
+class TrainingImpactOut(BaseModel):
+    cases: list[TrainingImpactCaseOut]

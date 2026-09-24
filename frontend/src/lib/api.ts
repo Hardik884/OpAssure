@@ -17,15 +17,16 @@
 import { DEMO_MACHINE_ID, DEMO_OPERATOR_ID } from "@/config/demo";
 import { API_URL, USE_MOCK_DATA } from "@/config/env";
 import {
-  mockActiveTaskInsightByTask, mockCriticalProximityAlert, mockFocus, mockHabitRadar, mockHistory,
-  mockInstructorSlots, mockMissionTasks, mockOperatorContext, mockOperatorInsight, mockRecentIncidents,
-  mockSafetyEvents, mockTask, mockThreatBriefingByTask, mockTrainingLibrary, mockTrainingRecommendation,
+  mockActiveTaskInsightByTask, mockAthleteProfile, mockCriticalProximityAlert, mockFocus, mockHabitRadar,
+  mockHistory, mockInstructorSlots, mockMissionTasks, mockOperatorContext, mockOperatorInsight,
+  mockRecentIncidents, mockSafetyEvents, mockTask, mockThreatBriefingByTask, mockTrainingImpact,
+  mockTrainingLibrary, mockTrainingRecommendation,
 } from "@/lib/mockData";
 import type {
-  ActiveTaskInsight, FocusItem, HabitRadarItem, HistoryEntry, Incident, IncidentEventType, IncidentInput,
-  InstructorSlot, MissionTask, Operator as OperatorIdentity, Machine as MachineIdentity, OperatorContext,
-  OperatorInsight, RiskLevel, SafetyEvent, SafetyStatus, Task, ThreatBriefingItem, TrainingClip,
-  TrainingRecommendation,
+  ActiveTaskInsight, AthleteProfile, FocusItem, HabitRadarItem, HistoryEntry, Incident, IncidentEventType,
+  IncidentInput, InstructorSlot, MissionTask, Operator as OperatorIdentity, Machine as MachineIdentity,
+  OperatorContext, OperatorInsight, RiskLevel, SafetyEvent, SafetyStatus, Task, ThreatBriefingItem,
+  TrainingClip, TrainingImpactCase, TrainingRecommendation,
 } from "@/types";
 
 export class ApiError extends Error {
@@ -150,6 +151,17 @@ interface RecommendationsOut {
   recommendations: RecommendationOut[];
 }
 
+interface TrainingImpactCaseOut {
+  operator_id: string;
+  operator_name: string;
+  clip_title: string;
+  metric_name: string;
+  timestamp: string;
+  before_metric: number;
+  after_metric: number;
+  pct_change: number | null;
+}
+
 /** POST /training/complete response — only `created` is used (rest is server bookkeeping). */
 interface TrainingCompleteOut {
   created: boolean;
@@ -214,6 +226,7 @@ interface MlOperatorTwin {
   heatSensitivity: number;
   afternoonEffect: number;
   fuelEfficiency: number;
+  seatbeltViolationRate: number;
   nTasks: number;
 }
 
@@ -349,6 +362,19 @@ function mapRecommendation(r: RecommendationOut): TrainingRecommendation {
   };
 }
 
+function mapImpactCase(c: TrainingImpactCaseOut): TrainingImpactCase {
+  return {
+    operatorId: c.operator_id,
+    operatorName: c.operator_name,
+    clipTitle: c.clip_title,
+    metricName: c.metric_name,
+    timestamp: c.timestamp,
+    beforeMetric: c.before_metric,
+    afterMetric: c.after_metric,
+    pctChange: c.pct_change,
+  };
+}
+
 function mapThreatBriefingItem(item: MlThreatBriefingItem): ThreatBriefingItem {
   return {
     id: `tb-${item.priority}`,
@@ -359,6 +385,19 @@ function mapThreatBriefingItem(item: MlThreatBriefingItem): ThreatBriefingItem {
     title: item.risk,
     detail: item.reason,
   };
+}
+
+export interface JudgeTriggerResult {
+  triggered: boolean;
+}
+
+async function postJudgeEvent(path: string, body: Record<string, unknown>): Promise<JudgeTriggerResult> {
+  const result = await request<{ triggered?: boolean; events: unknown[] }>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return { triggered: result.triggered ?? result.events.length > 0 };
 }
 
 export const api = {
@@ -414,6 +453,40 @@ export const api = {
           : "No significant afternoon pattern observed",
       riskLevel: toRiskLevel(state.risk.risk_level),
     };
+  },
+
+  /** The operator's full "stat card" for the Insights page — same operator_twin
+   * data as getOperatorInsight(), just unabridged (every stat, not the frozen
+   * 3-field subset), plus static identity/machine facts for the card header. */
+  async getAthleteProfile(): Promise<AthleteProfile> {
+    if (USE_MOCK_DATA) return mockResolve(mockAthleteProfile);
+    const [state, operatorOut, machineOut] = await Promise.all([
+      fetchMlState(DEMO_OPERATOR_ID),
+      request<OperatorOut>(`/operators/${DEMO_OPERATOR_ID}`),
+      request<MachineOut>(`/machines/${DEMO_MACHINE_ID}`),
+    ]);
+    const twin = state.operator_twin;
+    return {
+      operatorId: twin.operatorId,
+      name: operatorOut.name,
+      skill: operatorOut.skill,
+      machineType: machineOut.type,
+      gamesPlayed: twin.nTasks,
+      paceFactor: twin.paceFactor,
+      rainSensitivity: twin.rainSensitivity,
+      heatSensitivity: twin.heatSensitivity,
+      fuelEfficiency: twin.fuelEfficiency,
+      seatbeltViolationRate: twin.seatbeltViolationRate,
+      riskLevel: toRiskLevel(state.risk.risk_level),
+    };
+  },
+
+  /** Fleet-wide proof that completed training changed real behavior — every
+   * case is a measured before/after pair from training_events, never modeled. */
+  async getTrainingImpact(): Promise<TrainingImpactCase[]> {
+    if (USE_MOCK_DATA) return mockResolve(mockTrainingImpact);
+    const result = await request<{ cases: TrainingImpactCaseOut[] }>("/training/impact");
+    return result.cases.map(mapImpactCase);
   },
 
   /** Mission Board rows for today, in schedule order. Uses each task's own
@@ -575,6 +648,48 @@ export const api = {
     if (USE_MOCK_DATA) return mockResolve(mockRecentIncidents);
     const result = await request<IncidentListOut>(`/incidents/${DEMO_OPERATOR_ID}`);
     return result.incidents.map(mapIncident);
+  },
+
+  /* ================================================================
+   * Judge Control Panel — live-demo only. Every call here just feeds a
+   * synthetic-but-plausible input through the backend's real rule engine/ETA
+   * pipeline (see backend/app/api/judge.py); the frontend never fabricates
+   * the resulting ETA/safety numbers, only triggers the same recompute the
+   * live replay itself uses.
+   * ================================================================ */
+
+  /** Whether the T001 replay is currently running (injections need it running). */
+  async getDemoStatus(): Promise<{ running: boolean }> {
+    if (USE_MOCK_DATA) return mockResolve({ running: false });
+    const result = await request<{ status: { state: string } }>("/demo/status");
+    return { running: result.status.state === "running" };
+  },
+
+  /** Starts the T001 replay (no-op if already running). */
+  async startDemoReplay(): Promise<{ started: boolean }> {
+    if (USE_MOCK_DATA) return mockResolve({ started: false });
+    return request<{ started: boolean }>("/demo/start", { method: "POST" });
+  },
+
+  async triggerProximityIntrusion(): Promise<JudgeTriggerResult> {
+    if (USE_MOCK_DATA) return mockResolve({ triggered: false });
+    return postJudgeEvent("/judge/proximity", { distance_m: 8, direction: "right" });
+  },
+
+  async triggerRainstorm(): Promise<JudgeTriggerResult> {
+    if (USE_MOCK_DATA) return mockResolve({ triggered: false });
+    return postJudgeEvent("/judge/rain", { rain_mm: 15, cycle_multiplier: 1.4 });
+  },
+
+  async triggerCycleSpike(): Promise<JudgeTriggerResult> {
+    if (USE_MOCK_DATA) return mockResolve({ triggered: false });
+    return postJudgeEvent("/judge/cycle-spike", { multiplier: 1.7 });
+  },
+
+  /** Clears every judge-triggered override (rain, cycle spike, proximity) without stopping the replay. */
+  async resetJudgeOverrides(): Promise<JudgeTriggerResult> {
+    if (USE_MOCK_DATA) return mockResolve({ triggered: false });
+    return postJudgeEvent("/judge/reset", {});
   },
 };
 

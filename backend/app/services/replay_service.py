@@ -28,7 +28,7 @@ from app.models import Operator, Task, Telemetry
 from app.services import task_service
 from app.services.eta_service import MIN_WORKING_SAMPLES, estimate_eta, plan_eta
 from app.services.insights_service import operator_habits
-from app.services.safety_service import evaluate_proximity
+from app.services.safety_service import evaluate_proximity, proximity_severity
 from app.services.safety_state_service import nearest_worker
 from app.services.telemetry_service import LiveTelemetryStore, live_store, telemetry_to_dict
 from app.services.training_service import CATALOG, recommendations
@@ -63,6 +63,7 @@ class ReplayProcessor:
         self.working_cycles: list[float] = []
         self.live_counts: dict[str, int] = {}
         self.habits_sent: set[str] = set()
+        self.last_row: dict | None = None  # most recent processed row; Judge Control Panel injections key off it
 
     def initial_events(self) -> list[dict]:
         eta = plan_eta(self.task["estimated_time_min"], self.task["estimated_buckets"])
@@ -70,6 +71,7 @@ class ReplayProcessor:
         return [events.eta_update(self.task["task_id"], eta, self.task["start_time"])]
 
     def process(self, db: Session | None, row: dict) -> list[dict]:
+        self.last_row = row
         out = [events.telemetry_update(row)]
 
         # Safety rules (existing engine, via the live store: also updates latest + Black Box buffer).
@@ -107,19 +109,28 @@ class ReplayProcessor:
                                        worker["zone"] if worker else "safe")]
 
     def _eta(self, db: Session | None, row: dict) -> list[dict]:
+        """Record one new row's contribution, then recompute. Judge Control Panel
+        injections must NOT go through here (they'd double-count this row's
+        cycles/idle time on every recompute) — see `recompute_eta` below."""
         self.cycles_done += row["load_cycles"] or 0
         self.idle_min += row["idling_time_min"] or 0
         if row["machine_moving"] and row["avg_cycle_time_s"]:
             self.working_cycles.append(row["avg_cycle_time_s"])
+        return self._compute_eta(db, row["timestamp"])
+
+    def _compute_eta(self, db: Session | None, timestamp) -> list[dict]:
+        """Pure recompute from current cumulative state — no side effects, safe to
+        call more than once for the same moment (e.g. after a Judge Control Panel
+        injection changes `working_cycles`/weather without a new telemetry row)."""
         baseline = recent = None
         if len(self.working_cycles) >= MIN_WORKING_SAMPLES:
             baseline = sum(self.working_cycles[:MIN_WORKING_SAMPLES]) / MIN_WORKING_SAMPLES
             last = self.working_cycles[-RECENT_CYCLE_ROWS:]
             recent = sum(last) / len(last)
-        rain = self.weather.get_weather(db, row["timestamp"])["rain_mm"]
+        rain = self.weather.get_weather(db, timestamp)["rain_mm"]
         eta = estimate_eta(
             estimated_time_min=self.task["estimated_time_min"], estimated_buckets=self.task["estimated_buckets"],
-            elapsed_min=(row["timestamp"] - self.task["start_time"]).total_seconds() / 60,
+            elapsed_min=(timestamp - self.task["start_time"]).total_seconds() / 60,
             cycles_done=self.cycles_done, recent_cycle_s=recent, baseline_cycle_s=baseline,
             working_samples=len(self.working_cycles), idle_min=self.idle_min, rain_mm=rain,
         )
@@ -129,7 +140,7 @@ class ReplayProcessor:
                 and abs(eta["max"] - last["max"]) < ETA_CHANGE_MIN:
             return []
         self.last_eta = eta | {"reason_code": code}
-        return [events.eta_update(self.task["task_id"], eta, row["timestamp"])]
+        return [events.eta_update(self.task["task_id"], eta, timestamp)]
 
     def _habits(self, newly_active: set[str], row: dict) -> list[dict]:
         out = []
@@ -151,6 +162,41 @@ class ReplayProcessor:
                 rec = {"clip_id": clip["clip_id"], "title": clip["title"], "reason": habit["explanation"]}
             out.append(events.training_recommendation(self.task["operator_id"], rec, row["timestamp"]))
         return out
+
+    # ------------------------------------------------------------ Judge Control Panel
+    # Everything below feeds a synthetic-but-plausible input through the SAME rule
+    # engine/ETA function real telemetry uses (safety_service.evaluate_proximity,
+    # eta_service.estimate_eta) — nothing here fabricates an output number, it only
+    # lets someone in the room manufacture an input worth reacting to.
+
+    def inject_proximity(self, distance_m: float, direction: str | None) -> dict | None:
+        if self.last_row is None:
+            return None
+        row = self.last_row
+        alert = evaluate_proximity(distance_m, row["machine_moving"], direction)
+        level = alert.severity if alert else "safe"
+        if level == self.proximity_level:
+            return None  # no visible change
+        self.proximity_level = level
+        return events.proximity_alert(row["machine_id"], row["timestamp"], level, distance_m, direction,
+                                      "JUDGE-01", proximity_severity(distance_m))
+
+    def inject_cycle_spike(self, multiplier: float) -> None:
+        """Push `multiplier`x the operator's own baseline cycle time into the recent
+        window, so the next ETA recompute genuinely detects a slowdown (same
+        SLOWDOWN_RATIO check estimate_eta always uses) instead of a hand-written one."""
+        if len(self.working_cycles) >= MIN_WORKING_SAMPLES:
+            reference = sum(self.working_cycles[:MIN_WORKING_SAMPLES]) / MIN_WORKING_SAMPLES
+        elif self.working_cycles:
+            reference = sum(self.working_cycles) / len(self.working_cycles)
+        else:
+            reference = 30.0  # plausible seconds/cycle before any real sample has arrived yet
+        self.working_cycles.extend([reference * multiplier] * RECENT_CYCLE_ROWS)
+
+    def recompute_eta(self, db: Session | None) -> list[dict]:
+        if self.last_row is None:
+            return []
+        return self._compute_eta(db, self.last_row["timestamp"])
 
 
 def _reason_code(reason: str) -> tuple[str, ...]:
@@ -193,6 +239,7 @@ class ReplayEngine:
         self._task: asyncio.Task | None = None
         self._stop = asyncio.Event()
         self._lock = asyncio.Lock()
+        self._processor: ReplayProcessor | None = None  # Judge Control Panel injections target this
         self._status = {"state": "idle", "taskId": DEMO_TASK_ID, "operatorId": DEMO_OPERATOR_ID,
                         "machineId": DEMO_MACHINE_ID, "rowsSent": 0, "totalRows": None,
                         "intervalSeconds": get_replay_interval_seconds(), "lastTimestamp": None, "error": None}
@@ -228,9 +275,67 @@ class ReplayEngine:
     async def reset(self) -> dict:
         await self.stop()
         self.store.clear_machine(self._status["machineId"])
+        self.weather.set_override(None)
+        self._processor = None
         self._status.update(state="idle", rowsSent=0, totalRows=None, lastTimestamp=None, error=None)
         await self._safe_broadcast(events.replay_status(**self.status()))
         return self.status()
+
+    # ------------------------------------------------------------ Judge Control Panel
+    # Let anyone in the room manufacture a real event mid-demo. Every method below
+    # feeds a synthetic-but-plausible input through the same rule engine/ETA
+    # function real telemetry uses; see ReplayProcessor's own injection methods.
+
+    async def inject_proximity(self, distance_m: float, direction: str | None) -> list[dict]:
+        if self._processor is None:
+            return []
+        message = self._processor.inject_proximity(distance_m, direction)
+        if message is None:
+            return []
+        await self._safe_broadcast(message)
+        return [message]
+
+    async def inject_cycle_spike(self, multiplier: float) -> list[dict]:
+        if self._processor is None:
+            return []
+        self._processor.inject_cycle_spike(multiplier)
+        return await self._broadcast_recomputed_eta()
+
+    async def inject_rain(self, rain_mm: float, cycle_multiplier: float) -> list[dict]:
+        """A rainstorm alone doesn't move the ETA math (rain only relabels an
+        already-detected slowdown) — so this also applies the correlated cycle-time
+        hit a rainstorm plausibly causes, via the same inject_cycle_spike path."""
+        if self._processor is None:
+            return []
+        self.weather.set_override(rain_mm)
+        self._processor.inject_cycle_spike(cycle_multiplier)
+        return await self._broadcast_recomputed_eta()
+
+    async def clear_judge_overrides(self) -> list[dict]:
+        """Reset every Judge Control Panel injection without stopping the replay."""
+        self.weather.set_override(None)
+        messages: list[dict] = []
+        if self._processor is not None:
+            processor = self._processor
+            if len(processor.working_cycles) > MIN_WORKING_SAMPLES:
+                processor.working_cycles = processor.working_cycles[:MIN_WORKING_SAMPLES]
+            far_away = processor.inject_proximity(999.0, None)
+            if far_away:
+                messages.append(far_away)
+            messages.extend(await self._broadcast_recomputed_eta())
+        return messages
+
+    async def _broadcast_recomputed_eta(self) -> list[dict]:
+        if self._processor is None:
+            return []
+        db = self.session_factory()
+        try:
+            messages = self._processor.recompute_eta(db)
+        finally:
+            db.close()
+        for message in messages:
+            await self._safe_broadcast(message)
+        return messages
 
     async def wait(self) -> None:
         if self._task:
@@ -272,7 +377,9 @@ class ReplayEngine:
         task, rows = data["task"], data["rows"]
         self.store.clear_machine(task["machine_id"])
         self._status.update(operatorId=task["operator_id"], machineId=task["machine_id"], totalRows=len(rows))
+        self.weather.set_override(None)  # a fresh run starts clean of any earlier judge-panel injection
         processor = ReplayProcessor(task, data["habits"], data["recommendations"], self.store, self.weather)
+        self._processor = processor
         logger.info("Replay started: %s (%d rows, %.2fs interval)", task_id, len(rows), interval)
         await self._safe_broadcast(events.replay_status(**self.status()))
         for message in processor.initial_events():

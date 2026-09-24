@@ -7,9 +7,9 @@
  */
 import { DEMO_MACHINE_ID, DEMO_OPERATOR_ID, DEMO_TASK_ID } from "@/config/demo";
 import type {
-  ActiveTaskInsight, FocusItem, HabitRadarItem, HistoryEntry, Incident, InstructorSlot, Machine,
-  MissionTask, Operator, OperatorContext, OperatorInsight, SafetyEvent, Task, ThreatBriefingItem,
-  TrainingClip, TrainingRecommendation,
+  ActiveTaskInsight, AthleteProfile, FocusItem, HabitRadarItem, HistoryEntry, Incident, InstructorSlot,
+  Machine, MissionTask, Operator, OperatorContext, OperatorInsight, SafetyEvent, Task, ThreatBriefingItem,
+  TrainingClip, TrainingImpactCase, TrainingRecommendation,
 } from "@/types";
 
 export const mockOperator: Operator = {
@@ -115,6 +115,40 @@ export const mockOperatorInsight: OperatorInsight = {
   fatiguePattern: "afternoon",
   riskLevel: "medium",
 };
+
+/** Athlete Card — the Operator Twin's full stat line, mock stand-in for GET /insights/operator/{id}/ml. */
+export const mockAthleteProfile: AthleteProfile = {
+  operatorId: DEMO_OPERATOR_ID,
+  name: "Ravi",
+  skill: "Intermediate",
+  machineType: "Excavator",
+  gamesPlayed: 214,
+  paceFactor: 0.94,
+  rainSensitivity: 0.08,
+  heatSensitivity: 0.11,
+  fuelEfficiency: 1.03,
+  seatbeltViolationRate: 0.041,
+  riskLevel: "medium",
+};
+
+/** Training Impact — measured before/after proof, mock stand-in for GET /training/impact. */
+export const mockTrainingImpact: TrainingImpactCase[] = [
+  {
+    operatorId: "OP1003", operatorName: "Earl Murphy", clipTitle: "Cutting avoidable idle",
+    metricName: "avoidable_idle_min_per_hour", timestamp: "2025-05-31T06:30:00",
+    beforeMetric: 5.393, afterMetric: 3.779, pctChange: -0.299,
+  },
+  {
+    operatorId: "OP1008", operatorName: "Christina Brown", clipTitle: "Cutting avoidable idle",
+    metricName: "avoidable_idle_min_per_hour", timestamp: "2025-05-31T06:30:00",
+    beforeMetric: 7.165, afterMetric: 3.016, pctChange: -0.579,
+  },
+  {
+    operatorId: "OP1016", operatorName: "Cassandra Sanders", clipTitle: "Smooth swings and braking",
+    metricName: "harsh_events_per_hour", timestamp: "2025-06-05T06:30:00",
+    beforeMetric: 0.421, afterMetric: 0.252, pctChange: -0.401,
+  },
+];
 
 /** Training Library — placeholder/local clip references, no cloud video infra. */
 export const mockTrainingLibrary: TrainingClip[] = [
