@@ -56,6 +56,33 @@ def recommendations(db: Session, operator: Operator, before: datetime) -> dict:
             "completed": [e for e in events if e.completed]}
 
 
+def impact(db: Session) -> list[dict]:
+    """Fleet-wide, measured proof that completed training changed real behavior —
+    every case here is an actual before/after pair recorded on `training_events`
+    (seeded from real simulated telemetry in backend/simulator/generate_data.py,
+    or captured live via POST /training/complete). Never a modeled/estimated
+    number — cases with no measured `after_metric` yet are excluded, not filled in."""
+    events = db.scalars(
+        select(TrainingEvent)
+        .where(TrainingEvent.completed.is_(True), TrainingEvent.before_metric.is_not(None),
+              TrainingEvent.after_metric.is_not(None))
+        .order_by(TrainingEvent.timestamp)
+    ).all()
+    names = {o.operator_id: o.name for o in db.scalars(select(Operator)).all()}
+
+    cases = []
+    for e in events:
+        clip = CATALOG.get(e.trigger, {})
+        pct_change = round((e.after_metric - e.before_metric) / e.before_metric, 3) if e.before_metric else None
+        cases.append({
+            "operator_id": e.operator_id, "operator_name": names.get(e.operator_id, e.operator_id),
+            "trigger": e.trigger, "clip_title": clip.get("title", e.trigger), "metric_name": e.metric_name,
+            "timestamp": e.timestamp, "before_metric": e.before_metric, "after_metric": e.after_metric,
+            "pct_change": pct_change,
+        })
+    return cases
+
+
 def complete(db: Session, operator: Operator, clip_id: str, before: datetime, timestamp: datetime | None,
              before_metric: float | None, after_metric: float | None) -> tuple[TrainingEvent, bool]:
     trigger = CLIP_TO_TRIGGER.get(clip_id)

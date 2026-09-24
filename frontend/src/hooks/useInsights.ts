@@ -1,17 +1,16 @@
 "use client";
 
 /**
- * Insights page data: Operator Twin, Habit Radar, Focus. Reads through
- * lib/api.ts (mock data for now) — the frontend never interprets or derives
- * these values, only renders what's supplied.
+ * Insights page data: Habit Radar, Focus. Reads through lib/api.ts (mock data
+ * for now) — the frontend never interprets or derives these values, only
+ * renders what's supplied. (Operator Twin now lives in useAthleteProfile.)
  */
 import { useEffect, useState } from "react";
 
 import { api, errorMessage } from "@/lib/api";
-import type { FocusItem, HabitRadarItem, OperatorInsight } from "@/types";
+import type { FocusItem, HabitRadarItem } from "@/types";
 
 interface UseInsightsResult {
-  twin: OperatorInsight | null;
   habits: HabitRadarItem[];
   focus: FocusItem[];
   loading: boolean;
@@ -19,7 +18,6 @@ interface UseInsightsResult {
 }
 
 export function useInsights(): UseInsightsResult {
-  const [twin, setTwin] = useState<OperatorInsight | null>(null);
   const [habits, setHabits] = useState<HabitRadarItem[]>([]);
   const [focus, setFocus] = useState<FocusItem[]>([]);
   const [loading, setLoading] = useState(true); // already true on mount; effect only clears it
@@ -27,10 +25,9 @@ export function useInsights(): UseInsightsResult {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([api.getOperatorInsight(), api.getHabitRadar(), api.getFocus()])
-      .then(([twinResult, habitResult, focusResult]) => {
+    Promise.all([api.getHabitRadar(), api.getFocus()])
+      .then(([habitResult, focusResult]) => {
         if (!cancelled) {
-          setTwin(twinResult);
           setHabits(habitResult);
           setFocus(focusResult);
         }
@@ -46,5 +43,5 @@ export function useInsights(): UseInsightsResult {
     };
   }, []);
 
-  return { twin, habits, focus, loading, error };
+  return { habits, focus, loading, error };
 }

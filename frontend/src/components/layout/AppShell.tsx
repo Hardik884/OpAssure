@@ -8,6 +8,7 @@
 import type { ReactNode } from "react";
 
 import { Header } from "./Header";
+import { JudgeControlPanel } from "./JudgeControlPanel";
 import { Nav } from "./Nav";
 import { OfflineBanner } from "./OfflineBanner";
 import { OperatorProvider } from "./OperatorProvider";
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {/* pb-20 clears the fixed bottom tab bar on phone widths (sm:pb-0 removes it back). */}
             <main className="pb-20 sm:pb-0">{children}</main>
           </div>
+          <JudgeControlPanel />
         </RealtimeProvider>
       </OperatorProvider>
     </ThemeProvider>

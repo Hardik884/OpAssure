@@ -57,13 +57,25 @@ class WeatherService:
         self.api_url = api_url
         self._fetch_json = fetch_json
         self._cache: dict[datetime, dict] = {}
+        self._override: dict | None = None  # judge-panel-only: {"rain_mm", "condition"} or None
 
     @classmethod
     def from_env(cls) -> "WeatherService":
         return cls(mode=get_weather_mode(), api_url=get_weather_api_url())
 
+    def set_override(self, rain_mm: float | None, condition: str | None = None) -> None:
+        """Judge Control Panel only: force every subsequent `get_weather()` call
+        to report this rain/condition (temperature/wind still come from the real
+        source) until cleared with `set_override(None)`. Never used by the
+        normal replay/live path."""
+        self._override = None if rain_mm is None else {"rain_mm": rain_mm, "condition": condition or condition_from(rain_mm)}
+
     def get_weather(self, db: Session | None, at: datetime) -> dict:
         hour = at.replace(minute=0, second=0, microsecond=0)
+        if self._override is not None:
+            base = self._synthetic(db, hour)
+            return {**base, "rain_mm": self._override["rain_mm"], "condition": self._override["condition"],
+                    "source": "judge_override"}
         live_failed = False
         if self.mode == "live" and self.api_url:
             try:

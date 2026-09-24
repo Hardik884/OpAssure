@@ -209,6 +209,51 @@ export function ChevronRightIcon(props: IconProps) {
   );
 }
 
+export function TrendDownIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 7l7 7 4-4 5 5" />
+      <path d="M14 15h6v-6" />
+    </svg>
+  );
+}
+
+export function TrendUpIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 17l7-7 4 4 5-5" />
+      <path d="M14 9h6v6" />
+    </svg>
+  );
+}
+
+export function PlayIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M7 4.5v15l13-7.5-13-7.5z" />
+    </svg>
+  );
+}
+
+export function RefreshIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M20 11a8 8 0 00-14.8-3.4M4 13a8 8 0 0014.8 3.4" />
+      <path d="M5 4v4h4M19 20v-4h-4" />
+    </svg>
+  );
+}
+
+export function SlidersIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 6h10M17 6h3M4 18h3M10 18h10" />
+      <circle cx="14" cy="6" r="2.2" />
+      <circle cx="7" cy="18" r="2.2" />
+    </svg>
+  );
+}
+
 export function SunToggleIcon(props: IconProps) {
   return <SunIcon {...props} />;
 }

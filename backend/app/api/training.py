@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_or_404, history_cutoff
 from app.db.session import get_db
 from app.models import Operator
-from app.schemas.events import LibraryClipOut, RecommendationsOut, TrainingCompleteIn, TrainingCompleteOut
+from app.schemas.events import (
+    LibraryClipOut, RecommendationsOut, TrainingCompleteIn, TrainingCompleteOut, TrainingImpactOut,
+)
 from app.services import training_service
 
 router = APIRouter(tags=["training"])
@@ -35,3 +37,9 @@ def complete(payload: TrainingCompleteIn, db: Session = Depends(get_db)):
     event, created = training_service.complete(db, operator, payload.clip_id, history_cutoff(db),
                                                payload.timestamp, payload.before_metric, payload.after_metric)
     return {"training_event": event, "created": created}
+
+
+@router.get("/training/impact", response_model=TrainingImpactOut,
+            summary="Fleet-wide measured before/after proof that completed training changed real behavior")
+def impact(db: Session = Depends(get_db)):
+    return {"cases": training_service.impact(db)}
