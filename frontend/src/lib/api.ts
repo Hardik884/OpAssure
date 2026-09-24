@@ -4,14 +4,17 @@
  * below, never `fetch` directly.
  *
  * Mock vs real: `USE_MOCK_DATA` (config/env.ts) picks the source. Every function
- * has the same async signature either way, so flipping the flag later — once
- * Mission Board/Active Task/Safety are built — is a one-line change per function,
- * not a rewrite of the callers.
+ * has the same async signature either way.
  *
- * When wiring the real backend (see docs/api/README.md), map its snake_case
- * response fields onto the frozen types in ../types HERE, at the boundary —
- * never rename fields inside components (CLAUDE.md §10).
+ * Real-mode mapping happens HERE, at the boundary, never by renaming a field
+ * inside a component (CLAUDE.md §10): every backend response is snake_case
+ * (see docs/api/README.md); every value handed to a component uses the frozen
+ * camelCase types in ../types. This app is scoped to the single demo operator/
+ * machine (OP1001/EXC001, config/demo.ts) — every real call below is scoped to
+ * that identity, matching how every other part of the project (ml/, backend
+ * seed data, docs) treats it as the one live demo identity.
  */
+import { DEMO_MACHINE_ID, DEMO_OPERATOR_ID } from "@/config/demo";
 import { API_URL, USE_MOCK_DATA } from "@/config/env";
 import {
   mockActiveTaskInsightByTask, mockCriticalProximityAlert, mockFocus, mockHabitRadar, mockHistory,
@@ -19,8 +22,9 @@ import {
   mockSafetyEvents, mockTask, mockThreatBriefingByTask, mockTrainingLibrary, mockTrainingRecommendation,
 } from "@/lib/mockData";
 import type {
-  ActiveTaskInsight, FocusItem, HabitRadarItem, HistoryEntry, Incident, IncidentInput, InstructorSlot,
-  MissionTask, OperatorContext, OperatorInsight, SafetyEvent, Task, ThreatBriefingItem, TrainingClip,
+  ActiveTaskInsight, FocusItem, HabitRadarItem, HistoryEntry, Incident, IncidentEventType, IncidentInput,
+  InstructorSlot, MissionTask, Operator as OperatorIdentity, Machine as MachineIdentity, OperatorContext,
+  OperatorInsight, RiskLevel, SafetyEvent, SafetyStatus, Task, ThreatBriefingItem, TrainingClip,
   TrainingRecommendation,
 } from "@/types";
 
@@ -30,7 +34,7 @@ export class ApiError extends Error {
   }
 }
 
-/** Generic JSON fetch helper for the real backend. Not yet used by any endpoint below. */
+/** Generic JSON fetch helper for the real backend. */
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!API_URL) throw new ApiError(0, "NEXT_PUBLIC_API_URL is not set");
   let res: Response;
@@ -51,63 +55,409 @@ function mockResolve<T>(value: T, delayMs = 150): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), delayMs));
 }
 
+/* ================================================================
+ * Real backend response shapes (snake_case, see docs/api/README.md).
+ * Only the fields this file actually reads — not a full mirror of every
+ * backend schema. Kept private to this module; components never see these.
+ * ================================================================ */
+
+interface OperatorOut {
+  operator_id: string;
+  name: string;
+  skill: string;
+}
+
+interface MachineOut {
+  machine_id: string;
+  type: string;
+  model: string;
+}
+
+interface TaskOut {
+  task_id: string;
+  task_type: string;
+  zone: string;
+  estimated_buckets: number;
+  weather: string;
+  operator_id: string;
+  machine_id: string;
+  estimated_time_min: number;
+  actual_time_min: number | null;
+  start_time: string;
+  status: string; // completed | scheduled
+}
+
+interface TodayTasksOut {
+  date: string;
+  operator_id: string;
+  tasks: TaskOut[];
+}
+
+interface SafetyAlertOut {
+  type: string;
+  severity: string; // warning | critical
+  message: string;
+}
+
+interface NearestWorkerOut {
+  worker_id: string;
+  distance_m: number;
+  direction: "front" | "right" | "rear" | "left";
+  zone: string;
+}
+
+interface SafetyStateOut {
+  status: SafetyStatus;
+  nearest_worker: NearestWorkerOut | null;
+  alerts: SafetyAlertOut[];
+}
+
+interface IncidentOut {
+  id: number;
+  timestamp: string;
+  machine_id: string;
+  operator_id: string;
+  task_id: string | null;
+  type: string;
+  description: string;
+  telemetry_snapshot: unknown[] | null;
+}
+
+interface IncidentCreatedOut extends IncidentOut {
+  snapshot_size: number;
+}
+
+interface IncidentListOut {
+  incidents: IncidentOut[];
+}
+
+interface LibraryClipOut {
+  clip_id: string;
+  title: string;
+  trigger: string;
+  metric_name: string;
+  priority: string; // high | medium
+}
+
+interface RecommendationOut {
+  clip_id: string;
+  title: string;
+  reason: string;
+  priority: string; // high | medium
+}
+
+interface RecommendationsOut {
+  recommendations: RecommendationOut[];
+}
+
+/** One factor in an ETA/twin/risk explanation ({@link build_eta_explanation} etc. in ml/). */
+interface MlFactor {
+  name: string;
+  impact: "positive" | "neutral" | "negative";
+  detail?: unknown;
+}
+
+interface MlEta {
+  eta_min: number;
+  eta_max: number;
+  eta_point: number;
+  original_eta: number;
+  reason: string;
+  factors: MlFactor[];
+  buckets_remaining: number;
+}
+
+interface MlDynamicEta extends MlEta {
+  pct_complete: number;
+  cycle_time_change_pct: number | null;
+}
+
+interface MlRemainingWork {
+  total_buckets: number;
+  buckets_completed: number;
+  buckets_remaining: number;
+  pct_complete: number;
+  trucks_remaining: number | null; // always null — see ml/src/eta/remaining_work.py
+}
+
+interface MlRisk {
+  risk_level: "low" | "medium" | "high" | "critical";
+  score: number;
+  factors: string[];
+  explanation: string;
+}
+
+interface MlHabit {
+  habit_type: string;
+  count: number;
+  opportunities: number;
+  frequency: number;
+  is_habit: boolean;
+  explanation: string;
+}
+
+interface MlFocus {
+  score: number;
+  factors: string[];
+  recommendation: string;
+}
+
+interface MlOperatorTwin {
+  operatorId: string;
+  paceFactor: number;
+  rainSensitivity: number;
+  heatSensitivity: number;
+  afternoonEffect: number;
+  fuelEfficiency: number;
+  nTasks: number;
+}
+
+interface MlThreatBriefingItem {
+  priority: number;
+  risk: string;
+  reason: string;
+  source: "weather" | "operator" | "machine" | "site" | "safety";
+}
+
+/** The full `generate_operator_state()` output (see ml/docs/integration.md §4),
+ * minus the internal `_context` key the backend already strips before responding. */
+interface MlOperatorState {
+  operator_twin: MlOperatorTwin;
+  eta: MlEta;
+  dynamic_eta: MlDynamicEta;
+  remaining_work: MlRemainingWork;
+  risk: MlRisk;
+  habits: MlHabit[];
+  focus: MlFocus;
+  training: { recommended: boolean; clip_id?: string; title?: string; reason?: string; duration_seconds?: number };
+  threat_briefing: MlThreatBriefingItem[];
+}
+
+/* ================================================================
+ * Mapping helpers (backend/ML shape -> frozen frontend type).
+ * ================================================================ */
+
+/** ml's risk_level has a 4th "critical" band the frontend's 3-band RiskLevel
+ * doesn't; critical collapses into "high" — still the most severe UI state,
+ * never silently downgraded (the underlying hard-safety-rule score/level is
+ * still 100/"critical" in what's shown to the operator via SafetyStatus). */
+function toRiskLevel(level: string): RiskLevel {
+  return level === "low" ? "low" : level === "medium" ? "medium" : "high";
+}
+
+function fetchMlState(operatorId: string, taskId?: string): Promise<MlOperatorState> {
+  const qs = taskId ? `?task_id=${encodeURIComponent(taskId)}` : "";
+  return request<MlOperatorState>(`/insights/operator/${encodeURIComponent(operatorId)}/ml${qs}`);
+}
+
+function mapTask(t: TaskOut, eta: { eta_min: number; eta_max: number; original_eta: number }, riskLevel: RiskLevel): Task {
+  return {
+    taskId: t.task_id,
+    taskType: t.task_type,
+    zone: t.zone,
+    originalEta: Math.round(eta.original_eta),
+    etaMin: Math.round(eta.eta_min),
+    etaMax: Math.round(eta.eta_max),
+    bucketsRemaining: t.estimated_buckets,
+    weather: t.weather,
+    riskLevel,
+  };
+}
+
+async function fetchTaskWithMlEta(taskOut: TaskOut): Promise<Task> {
+  const state = await fetchMlState(taskOut.operator_id, taskOut.task_id);
+  return mapTask(taskOut, state.eta, toRiskLevel(state.risk.risk_level));
+}
+
+function formatStartTime(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+const DIRECTION_VALUES: readonly string[] = ["front", "right", "rear", "left"];
+
+function mapSafetyEvent(alert: SafetyAlertOut, nearestWorker: NearestWorkerOut | null): SafetyEvent {
+  const isProximity = alert.type === "proximity";
+  const direction = isProximity && nearestWorker && DIRECTION_VALUES.includes(nearestWorker.direction)
+    ? (nearestWorker.direction as SafetyEvent["direction"])
+    : null;
+  return {
+    event: alert.type,
+    severity: alert.severity === "critical" ? "critical" : "warning",
+    distance: isProximity && nearestWorker ? nearestWorker.distance_m : null,
+    direction,
+    message: alert.message,
+  };
+}
+
+const INCIDENT_TYPE_MAP: Record<string, IncidentEventType> = {
+  seatbelt: "seatbelt",
+  proximity: "proximity",
+  near_miss: "proximity",
+  proximity_near_miss: "proximity",
+  harsh_event: "machine",
+  machine: "machine",
+  ground: "ground",
+  manual_report: "other",
+};
+
+function mapIncidentType(backendType: string): IncidentEventType {
+  return INCIDENT_TYPE_MAP[backendType] ?? "other";
+}
+
+function mapIncident(i: IncidentOut): Incident {
+  return {
+    id: String(i.id),
+    eventType: mapIncidentType(i.type),
+    note: i.description,
+    taskId: i.task_id ?? "",
+    operatorId: i.operator_id,
+    machineId: i.machine_id,
+    createdAt: i.timestamp,
+    hasTelemetryContext: !!i.telemetry_snapshot && i.telemetry_snapshot.length > 0,
+  };
+}
+
+/** Cosmetic defaults for fields the backend's clip catalog doesn't carry
+ * (description/videoRef/durationMin — see docs/api/README.md's note on
+ * `/training/library`). Never used for a computed number, only presentation. */
+const DEFAULT_CLIP_DURATION_MIN = 5;
+
+function mapLibraryClip(c: LibraryClipOut): TrainingClip {
+  return {
+    clipId: c.clip_id,
+    title: c.title,
+    description: `Addresses ${c.trigger.replace(/_/g, " ")} (${c.metric_name.replace(/_/g, " ")}).`,
+    durationMin: DEFAULT_CLIP_DURATION_MIN,
+    category: c.trigger,
+    videoRef: `/training/${c.clip_id}.mp4`,
+  };
+}
+
+function mapRecommendation(r: RecommendationOut): TrainingRecommendation {
+  return {
+    clipId: r.clip_id,
+    title: r.title,
+    reason: r.reason,
+    durationMin: DEFAULT_CLIP_DURATION_MIN,
+    priority: r.priority === "high" ? "high" : "medium",
+  };
+}
+
+function mapThreatBriefingItem(item: MlThreatBriefingItem): ThreatBriefingItem {
+  return {
+    id: `tb-${item.priority}`,
+    // The ML layer ranks by severity but doesn't emit a safety-status band —
+    // the top-ranked safety-sourced risk is the one the hard safety rules
+    // would also flag as critical; everything else is a lower-grade warning.
+    severity: item.priority === 1 && item.source === "safety" ? "critical" : "warning",
+    title: item.risk,
+    detail: item.reason,
+  };
+}
+
 export const api = {
   /** Operator, machine, current task and overall safety status in one shape. */
-  getOperatorContext(): Promise<OperatorContext> {
+  async getOperatorContext(): Promise<OperatorContext> {
     if (USE_MOCK_DATA) return mockResolve(mockOperatorContext);
-    // TODO(real API): assemble from GET /operators/{id}, /machines/{id}, /tasks/today.
-    return request<OperatorContext>("/operator-context");
+
+    const [operatorOut, today] = await Promise.all([
+      request<OperatorOut>(`/operators/${DEMO_OPERATOR_ID}`),
+      request<TodayTasksOut>(`/tasks/today?operator_id=${DEMO_OPERATOR_ID}`),
+    ]);
+    const currentTaskOut = today.tasks.find((t) => t.status !== "completed") ?? null;
+
+    const [machineOut, safety] = await Promise.all([
+      request<MachineOut>(`/machines/${currentTaskOut?.machine_id ?? DEMO_MACHINE_ID}`),
+      request<SafetyStateOut>(`/safety/${currentTaskOut?.machine_id ?? DEMO_MACHINE_ID}`).catch(
+        () => null as SafetyStateOut | null,
+      ),
+    ]);
+
+    const operator: OperatorIdentity = { operatorId: operatorOut.operator_id, name: operatorOut.name, skill: operatorOut.skill };
+    const machine: MachineIdentity = { machineId: machineOut.machine_id, type: machineOut.type, model: machineOut.model };
+    const currentTask = currentTaskOut ? await fetchTaskWithMlEta(currentTaskOut) : null;
+
+    return { operator, machine, currentTask, safetyStatus: safety?.status ?? "safe" };
   },
 
-  getCurrentTask(): Promise<Task> {
+  async getCurrentTask(): Promise<Task> {
     if (USE_MOCK_DATA) return mockResolve(mockTask);
-    // TODO(real API): GET /tasks/{id}; map snake_case fields to Task here.
-    return request<Task>("/tasks/current");
+    const today = await request<TodayTasksOut>(`/tasks/today?operator_id=${DEMO_OPERATOR_ID}`);
+    const currentTaskOut = today.tasks.find((t) => t.status !== "completed") ?? today.tasks[0];
+    if (!currentTaskOut) throw new ApiError(404, `No task found for ${DEMO_OPERATOR_ID} today`);
+    return fetchTaskWithMlEta(currentTaskOut);
   },
 
-  getSafetyEvents(): Promise<SafetyEvent[]> {
+  async getSafetyEvents(): Promise<SafetyEvent[]> {
     if (USE_MOCK_DATA) return mockResolve(mockSafetyEvents);
-    // TODO(real API): GET /safety/{machine_id}; map `alerts[]` to SafetyEvent[] here.
-    return request<SafetyEvent[]>("/safety/events");
+    const state = await request<SafetyStateOut>(`/safety/${DEMO_MACHINE_ID}`);
+    return state.alerts.map((alert) => mapSafetyEvent(alert, state.nearest_worker));
   },
 
-  getOperatorInsight(): Promise<OperatorInsight> {
+  async getOperatorInsight(): Promise<OperatorInsight> {
     if (USE_MOCK_DATA) return mockResolve(mockOperatorInsight);
-    // TODO(real API): GET /operator/{id}/insights; map to OperatorInsight here.
-    return request<OperatorInsight>("/operator/insight");
+    const state = await fetchMlState(DEMO_OPERATOR_ID);
+    const twin = state.operator_twin;
+    return {
+      operatorId: twin.operatorId,
+      paceFactor: twin.paceFactor,
+      rainSensitivity: twin.rainSensitivity,
+      fatiguePattern:
+        twin.afternoonEffect <= -0.03
+          ? `Afternoon pace drops ~${Math.round(Math.abs(twin.afternoonEffect) * 100)}% (${twin.nTasks} tasks observed)`
+          : "No significant afternoon pattern observed",
+      riskLevel: toRiskLevel(state.risk.risk_level),
+    };
   },
 
-  /** Mission Board rows for today, in schedule order. */
-  getTodayTasks(): Promise<MissionTask[]> {
+  /** Mission Board rows for today, in schedule order. Uses each task's own
+   * plan estimate (not a per-row ML call — see docs/api/README.md's note on
+   * why only the active task gets a live personalized ETA). */
+  async getTodayTasks(): Promise<MissionTask[]> {
     if (USE_MOCK_DATA) return mockResolve(mockMissionTasks);
-    // TODO(real API): GET /tasks/today?operator_id=OP1001; map snake_case fields
-    // (task_id, task_type, estimated_time_min, start_time, ...) to MissionTask here.
-    return request<MissionTask[]>("/tasks/today");
+    const today = await request<TodayTasksOut>(`/tasks/today?operator_id=${DEMO_OPERATOR_ID}`);
+    return today.tasks.map((t) => ({
+      ...mapTask(t, { eta_min: t.estimated_time_min, eta_max: t.estimated_time_min, original_eta: t.estimated_time_min }, "low"),
+      startTime: formatStartTime(t.start_time),
+    }));
   },
 
   /** A single task by id (Mission Board's "VIEW" action). */
-  getTask(taskId: string): Promise<Task | undefined> {
+  async getTask(taskId: string): Promise<Task | undefined> {
     if (USE_MOCK_DATA) return mockResolve(mockMissionTasks.find((t) => t.taskId === taskId));
-    // TODO(real API): GET /tasks/{id}; map fields to Task here.
-    return request<Task>(`/tasks/${taskId}`);
+    const taskOut = await request<TaskOut>(`/tasks/${encodeURIComponent(taskId)}`);
+    return fetchTaskWithMlEta(taskOut);
   },
 
   /** Pre-Task Threat Briefing facts for a task (empty if there's nothing to brief). */
-  getThreatBriefing(taskId: string): Promise<ThreatBriefingItem[]> {
+  async getThreatBriefing(taskId: string): Promise<ThreatBriefingItem[]> {
     if (USE_MOCK_DATA) return mockResolve(mockThreatBriefingByTask[taskId] ?? []);
-    // TODO(real API): once the backend exposes a briefing endpoint, map it here.
-    return request<ThreatBriefingItem[]>(`/tasks/${taskId}/threat-briefing`);
+    const state = await fetchMlState(DEMO_OPERATOR_ID, taskId);
+    return state.threat_briefing.map(mapThreatBriefingItem);
   },
 
-  /** Supplementary Active Task facts (ETA reasons, truck estimate). */
-  getActiveTaskInsight(taskId: string): Promise<ActiveTaskInsight | null> {
+  /** Supplementary Active Task facts (ETA reasons, remaining work). ml/ never
+   * fabricates a truck count (no bucket-per-truck field in the data model —
+   * see ml/src/eta/remaining_work.py), so this surfaces the real
+   * buckets-remaining count and says so explicitly in the reason text rather
+   * than inventing a truck number. */
+  async getActiveTaskInsight(taskId: string): Promise<ActiveTaskInsight | null> {
     if (USE_MOCK_DATA) return mockResolve(mockActiveTaskInsightByTask[taskId] ?? null);
-    // TODO(real API): derive from GET /ml-input/operator/{id} (eta_update reason, etc.).
-    return request<ActiveTaskInsight>(`/tasks/${taskId}/insight`);
+    const state = await fetchMlState(DEMO_OPERATOR_ID, taskId);
+    const reasons = [state.dynamic_eta.reason];
+    if (state.remaining_work.trucks_remaining === null) {
+      reasons.push(`Truck count not tracked — ${state.remaining_work.buckets_remaining} buckets remaining`);
+    }
+    return {
+      taskId,
+      approxTrucksRemaining: state.remaining_work.trucks_remaining ?? state.remaining_work.buckets_remaining,
+      etaReasons: reasons,
+    };
   },
 
   /** Records an operator-reported incident. Always returns a telemetry-attached record. */
-  recordIncident(input: IncidentInput): Promise<Incident> {
+  async recordIncident(input: IncidentInput): Promise<Incident> {
     if (USE_MOCK_DATA) {
       const incident: Incident = {
         ...input,
@@ -117,9 +467,18 @@ export const api = {
       };
       return mockResolve(incident);
     }
-    // TODO(real API): POST /incidents with { operator_id, machine_id, task_id, type: eventType,
-    // description: note }; map the { snapshot_size, telemetry_snapshot } response back here.
-    return request<Incident>("/incidents", { method: "POST", body: JSON.stringify(input) });
+    const created = await request<IncidentCreatedOut>("/incidents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        operator_id: input.operatorId,
+        machine_id: input.machineId,
+        task_id: input.taskId,
+        type: input.eventType,
+        description: input.note,
+      }),
+    });
+    return mapIncident(created);
   },
 
   /**
@@ -131,21 +490,17 @@ export const api = {
   },
 
   /** Training Hub library — all available clips. */
-  getTrainingLibrary(): Promise<TrainingClip[]> {
+  async getTrainingLibrary(): Promise<TrainingClip[]> {
     if (USE_MOCK_DATA) return mockResolve(mockTrainingLibrary);
-    // TODO(real API): GET /training/recommendations/{operator_id} only returns recommendations,
-    // not a full library — no backend endpoint for the full clip catalog exists yet, so this
-    // stays mock until one is added. Do not invent a path here.
-    return request<TrainingClip[]>("/training/library");
+    const clips = await request<LibraryClipOut[]>("/training/library");
+    return clips.map(mapLibraryClip);
   },
 
   /** The single "Recommended for you" / just-in-time recommendation, if any. */
-  getTrainingRecommendation(): Promise<TrainingRecommendation | null> {
+  async getTrainingRecommendation(): Promise<TrainingRecommendation | null> {
     if (USE_MOCK_DATA) return mockResolve(mockTrainingRecommendation);
-    // TODO(real API): GET /training/recommendations/{operator_id} returns
-    // { recommendations: [{clip_id, title, reason, priority, ...}] } sorted high-priority
-    // first — map recommendations[0] (if any) to TrainingRecommendation here.
-    return request<TrainingRecommendation | null>(`/training/recommendations/${encodeURIComponent("OP1001")}`);
+    const result = await request<RecommendationsOut>(`/training/recommendations/${DEMO_OPERATOR_ID}`);
+    return result.recommendations.length > 0 ? mapRecommendation(result.recommendations[0]) : null;
   },
 
   /** Mock instructor booking slots — intentionally not a real scheduling system. */
@@ -154,36 +509,54 @@ export const api = {
   },
 
   /** Habit Radar — system-detected behavioural patterns, glanceable only. */
-  getHabitRadar(): Promise<HabitRadarItem[]> {
+  async getHabitRadar(): Promise<HabitRadarItem[]> {
     if (USE_MOCK_DATA) return mockResolve(mockHabitRadar);
-    // TODO(real API): GET /insights/operator/{id}/ml -> `habits[]` ({habit_type, is_habit, ...}).
-    // Map each detected habit to a HabitRadarItem here; do not compute detection in the UI.
-    return request<HabitRadarItem[]>("/insights/operator/OP1001/ml");
+    const state = await fetchMlState(DEMO_OPERATOR_ID);
+    return state.habits.map((h) => ({
+      id: h.habit_type,
+      label: h.explanation,
+      status: h.is_habit ? "Detected" : "Normal",
+    }));
   },
 
   /** Focus — "what should the operator pay attention to right now," ranked. */
-  getFocus(): Promise<FocusItem[]> {
+  async getFocus(): Promise<FocusItem[]> {
     if (USE_MOCK_DATA) return mockResolve(mockFocus);
-    // TODO(real API): GET /insights/operator/{id}/ml -> `focus.factors[]`. Map to ranked
-    // FocusItem[] here; the ranking/score comes from the backend, never computed in the UI.
-    return request<FocusItem[]>("/insights/operator/OP1001/ml");
+    const state = await fetchMlState(DEMO_OPERATOR_ID);
+    return state.focus.factors.map((label, index) => ({ id: `focus-${index}`, rank: index + 1, label }));
   },
 
   /** Today's completed activity for /history. */
-  getTaskHistory(): Promise<HistoryEntry[]> {
+  async getTaskHistory(): Promise<HistoryEntry[]> {
     if (USE_MOCK_DATA) return mockResolve(mockHistory);
-    // TODO(real API): no dedicated history endpoint exists yet — GET /tasks/today?operator_id=
-    // returns `status` (completed|scheduled) per task and GET /incidents/{operator_id} has
-    // per-task events; combine those here into HistoryEntry[] once wired, never invent one.
-    return request<HistoryEntry[]>("/tasks/today?operator_id=OP1001");
+    const [today, incidentsResult] = await Promise.all([
+      request<TodayTasksOut>(`/tasks/today?operator_id=${DEMO_OPERATOR_ID}`),
+      request<IncidentListOut>(`/incidents/${DEMO_OPERATOR_ID}`).catch(() => ({ incidents: [] }) as IncidentListOut),
+    ]);
+    const incidentByTask = new Map(incidentsResult.incidents.filter((i) => i.task_id).map((i) => [i.task_id, i]));
+    return today.tasks
+      .filter((t) => t.status === "completed")
+      .map((t) => {
+        const minutes = Math.round(t.actual_time_min ?? t.estimated_time_min);
+        return {
+          taskId: t.task_id,
+          taskType: t.task_type,
+          zone: t.zone,
+          startTime: formatStartTime(t.start_time),
+          status: "completed" as const,
+          etaMin: minutes,
+          etaMax: minutes,
+          weather: t.weather,
+          safetyNote: incidentByTask.get(t.task_id)?.type ?? null,
+        };
+      });
   },
 
   /** A short recent-incidents list for the /safety page. */
-  getRecentIncidents(): Promise<Incident[]> {
+  async getRecentIncidents(): Promise<Incident[]> {
     if (USE_MOCK_DATA) return mockResolve(mockRecentIncidents);
-    // TODO(real API): GET /incidents/{operator_id} -> { incidents: [...] }; map snake_case
-    // fields (operator_id, machine_id, task_id, type, description, timestamp) to Incident here.
-    return request<Incident[]>(`/incidents/${encodeURIComponent("OP1001")}`);
+    const result = await request<IncidentListOut>(`/incidents/${DEMO_OPERATOR_ID}`);
+    return result.incidents.map(mapIncident);
   },
 };
 

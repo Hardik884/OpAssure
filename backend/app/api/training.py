@@ -4,10 +4,22 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_or_404, history_cutoff
 from app.db.session import get_db
 from app.models import Operator
-from app.schemas.events import RecommendationsOut, TrainingCompleteIn, TrainingCompleteOut
+from app.schemas.events import LibraryClipOut, RecommendationsOut, TrainingCompleteIn, TrainingCompleteOut
 from app.services import training_service
 
 router = APIRouter(tags=["training"])
+
+
+@router.get("/training/library", response_model=list[LibraryClipOut], summary="Full training clip catalog")
+def library():
+    """The same clip catalog `/training/recommendations/{id}` draws from
+    (`training_service.CATALOG`) — one clip_id namespace across both
+    endpoints, so a library item and a recommendation always agree."""
+    return [
+        {"clip_id": clip["clip_id"], "title": clip["title"], "trigger": trigger,
+         "metric_name": clip["metric_name"], "priority": clip["priority"]}
+        for trigger, clip in training_service.CATALOG.items()
+    ]
 
 
 @router.get("/training/recommendations/{operator_id}", response_model=RecommendationsOut,

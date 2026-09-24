@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: fromRootEnv("NEXT_PUBLIC_API_URL") ?? "http://localhost:8000",
     NEXT_PUBLIC_WS_URL: fromRootEnv("NEXT_PUBLIC_WS_URL") ?? "ws://localhost:8000/ws",
+    NEXT_PUBLIC_USE_MOCK_DATA: fromRootEnv("NEXT_PUBLIC_USE_MOCK_DATA") ?? "false",
   },
 };
 

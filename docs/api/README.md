@@ -48,6 +48,7 @@ Every error has the same shape. Raw SQL and stack traces are never returned.
 | GET | `/safety/{machine_id}` | Current safety state |
 | POST | `/incidents` | Create incident + telemetry snapshot |
 | GET | `/incidents/{operator_id}` | Incident history |
+| GET | `/training/library` | Full training clip catalog |
 | GET | `/training/recommendations/{operator_id}` | Training recommendations |
 | POST | `/training/complete` | Record training completion |
 | GET | `/operator/{id}/insights` | Operator Twin data |
@@ -204,6 +205,18 @@ Newest first. Each item has the incident fields above plus `telemetry_snapshot`.
 
 ```json
 {"operator_id": "OP1001", "count": 1, "incidents": [{"id": 14, "...": "..."}]}
+```
+
+### GET /training/library
+
+The full clip catalog (`training_service.CATALOG`) — the same `clip_id`s
+`/training/recommendations/{operator_id}` draws from, so a library browse and
+a live recommendation always agree on what a given clip_id means.
+
+```json
+[{"clip_id": "CLIP_SEATBELT_01", "title": "Buckle up before you move", "trigger": "seatbelt",
+  "metric_name": "seatbelt_violations", "priority": "high"},
+ "..."]
 ```
 
 ### GET /training/recommendations/{operator_id}

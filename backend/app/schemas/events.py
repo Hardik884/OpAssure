@@ -89,6 +89,19 @@ class TrainingEventOut(BaseModel):
     after_metric: float | None
 
 
+class LibraryClipOut(BaseModel):
+    """One entry in the full training clip catalog (GET /training/library) —
+    the same clip_id/title/metric_name/priority `RecommendationOut` below
+    draws from, so a library browse and a live recommendation never disagree
+    about what a given clip_id means."""
+
+    clip_id: str
+    title: str
+    trigger: str  # the habit_type this clip addresses
+    metric_name: str
+    priority: str  # high | medium
+
+
 class RecommendationOut(BaseModel):
     clip_id: str
     title: str
