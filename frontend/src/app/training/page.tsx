@@ -21,6 +21,14 @@ export default function TrainingPage() {
     <PageContainer>
       <PageTitle title="Training" />
 
+      <Card rounded="lg" className="mb-6">
+        <p className="text-sm font-medium text-foreground-muted">
+          <span className="font-semibold text-foreground">How this works —</span> clips below are picked from your
+          own detected habits (see Habit Radar on Insights), not a fixed course. Watch one to log it as done; the
+          Proven Impact panel on Insights then tracks whether your numbers actually improved afterward.
+        </p>
+      </Card>
+
       {error && <ErrorNote>{error}</ErrorNote>}
 
       <section className="mb-6">
