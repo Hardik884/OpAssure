@@ -44,7 +44,7 @@ export function IncidentForm({ defaultEventType = "other", submitting, onSubmit,
         className="mb-4 min-h-12 w-full rounded-industrial border border-border bg-surface px-3 text-base font-medium text-foreground"
       >
         {EVENT_TYPES.map(({ value, label }) => (
-          <option key={value} value={value}>
+          <option key={value} value={value} className="bg-surface text-foreground">
             {label}
           </option>
         ))}
