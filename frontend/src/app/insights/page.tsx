@@ -7,7 +7,7 @@
 import { FocusCard } from "@/components/insights/FocusCard";
 import { HabitRadarCard } from "@/components/insights/HabitRadarCard";
 import { OperatorTwinCard } from "@/components/insights/OperatorTwinCard";
-import { Card, Empty, ErrorNote, PageContainer } from "@/components/common/ui";
+import { Card, Empty, ErrorNote, PageContainer, PageTitle } from "@/components/common/ui";
 import { useInsights } from "@/hooks/useInsights";
 
 export default function InsightsPage() {
@@ -15,7 +15,7 @@ export default function InsightsPage() {
 
   return (
     <PageContainer>
-      <h1 className="mb-4 text-2xl font-black uppercase tracking-tight text-foreground sm:text-3xl">Insights</h1>
+      <PageTitle title="Insights" />
 
       {error && <ErrorNote>{error}</ErrorNote>}
 

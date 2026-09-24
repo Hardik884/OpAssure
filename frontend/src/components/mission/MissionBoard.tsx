@@ -16,7 +16,7 @@ import { useMissionTasks } from "@/hooks/useMissionTasks";
 import type { MissionTask, ThreatBriefingItem } from "@/types";
 
 import { Modal } from "../common/Modal";
-import { Card, Empty, ErrorNote, PageContainer } from "../common/ui";
+import { Card, Empty, ErrorNote, PageContainer, PageTitle } from "../common/ui";
 import { TaskCard } from "./TaskCard";
 import { ThreatBriefing } from "./ThreatBriefing";
 
@@ -46,12 +46,7 @@ export function MissionBoard() {
 
   return (
     <PageContainer>
-      <p className="text-sm font-bold uppercase tracking-widest text-foreground-muted">
-        {getGreeting()}, {context.operator.name}
-      </p>
-      <h1 className="mb-4 text-2xl font-black uppercase tracking-tight text-foreground sm:text-3xl">
-        Today&apos;s Mission
-      </h1>
+      <PageTitle eyebrow={`${getGreeting()}, ${context.operator.name}`} title="Today's Mission" />
 
       {error ? (
         <ErrorNote>{error}</ErrorNote>
@@ -118,7 +113,7 @@ function TaskDetail({ task }: { task: MissionTask }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-bold uppercase tracking-widest text-foreground-muted">{label}</dt>
+      <dt className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground-muted">{label}</dt>
       <dd className="font-semibold text-foreground">{value}</dd>
     </div>
   );

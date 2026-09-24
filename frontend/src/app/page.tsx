@@ -44,8 +44,8 @@ export default function HomePage() {
             </>
           ) : (
             <>
-              <div className="text-xs font-bold uppercase tracking-widest text-foreground-muted">Current task</div>
-              <p className="mt-1 text-sm font-semibold text-foreground-muted">No task assigned.</p>
+              <div className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground-muted">Current task</div>
+              <p className="mt-1 text-sm font-medium text-foreground-muted">No task assigned.</p>
             </>
           )}
         </Card>

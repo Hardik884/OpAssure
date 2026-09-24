@@ -14,10 +14,10 @@ export function FocusCard({ items }: { items: FocusItem[] }) {
         <ol className="space-y-3">
           {sorted.map((item) => (
             <li key={item.id} className="flex items-center gap-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-industrial bg-brand-500 text-sm font-black text-ink-950">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-500 font-display text-sm font-semibold text-ink-950">
                 {item.rank}
               </span>
-              <span className="min-w-0 flex-1 text-sm font-bold leading-snug text-foreground">{item.label}</span>
+              <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground">{item.label}</span>
             </li>
           ))}
         </ol>

@@ -3,6 +3,8 @@
 /** Compact header control — not a settings page. Icon + accessible label, keyboard reachable. */
 import { useEffect, useState } from "react";
 
+import { MoonIcon, SunToggleIcon } from "@/components/common/icons";
+
 import { useTheme } from "./ThemeProvider";
 
 export function ThemeToggle() {
@@ -27,10 +29,10 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       aria-pressed={isDark}
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-industrial border-2 border-white/20 text-lg text-white transition-colors hover:border-white/40 hover:bg-white/10"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-industrial border border-white/15 text-white transition-colors hover:border-white/35 hover:bg-white/10"
     >
       <span aria-hidden suppressHydrationWarning>
-        {isDark ? "☀" : "🌙"}
+        {isDark ? <SunToggleIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
       </span>
     </button>
   );

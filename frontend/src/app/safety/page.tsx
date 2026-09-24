@@ -8,7 +8,7 @@
  * reachable standalone summary, not a second source of truth.
  */
 import { SafetyStatus } from "@/components/safety/SafetyStatus";
-import { Card, Empty, ErrorNote, PageContainer, SectionHeader } from "@/components/common/ui";
+import { Card, Empty, ErrorNote, PageContainer, PageTitle, SectionHeader } from "@/components/common/ui";
 import { useRecentIncidents } from "@/hooks/useRecentIncidents";
 import { useSafety } from "@/hooks/useSafety";
 
@@ -18,7 +18,7 @@ export default function SafetyPage() {
 
   return (
     <PageContainer>
-      <h1 className="mb-4 text-2xl font-black uppercase tracking-tight text-foreground sm:text-3xl">Safety</h1>
+      <PageTitle title="Safety" />
 
       {safetyError && <ErrorNote>{safetyError}</ErrorNote>}
 
@@ -41,10 +41,10 @@ export default function SafetyPage() {
             <ul className="space-y-3">
               {incidents.map((incident) => (
                 <li key={incident.id} className="border-b border-border pb-3 last:border-0 last:pb-0">
-                  <p className="text-xs font-bold uppercase tracking-widest text-foreground-muted">
+                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground-muted">
                     {incident.eventType} · {new Date(incident.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </p>
-                  <p className="text-sm font-semibold text-foreground">{incident.note}</p>
+                  <p className="text-sm font-medium text-foreground">{incident.note}</p>
                 </li>
               ))}
             </ul>

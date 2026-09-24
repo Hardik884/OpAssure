@@ -9,14 +9,16 @@
  */
 import { useState } from "react";
 
+import { ClockIcon, FuelIcon, GaugeIcon } from "@/components/common/icons";
 import { useOperatorContext } from "@/components/layout/OperatorProvider";
 import { useRealtime } from "@/components/layout/RealtimeProvider";
 import { useActiveTaskInsight } from "@/hooks/useActiveTaskInsight";
 import { useSafety } from "@/hooks/useSafety";
 import { useTask } from "@/hooks/useTask";
+import { useTelemetry } from "@/hooks/useTelemetry";
 import { useTrainingRecommendation } from "@/hooks/useTrainingRecommendation";
 import { api } from "@/lib/api";
-import { weatherGlyph } from "@/lib/format";
+import { DEFAULT_WEATHER_ICON, WEATHER_ICON } from "@/lib/format";
 import type { IncidentEventType, SafetyEvent } from "@/types";
 
 import { Button, Card, Empty, ErrorNote, PageContainer, StatusDot } from "../common/ui";
@@ -33,6 +35,7 @@ export function ActiveTask() {
   const { task, loading, error } = useTask();
   const { insight } = useActiveTaskInsight(task?.taskId);
   const { events: safetyEvents } = useSafety();
+  const { telemetry } = useTelemetry();
   const realtime = useRealtime();
   const { recommendation: trainingRecommendation } = useTrainingRecommendation();
 
@@ -88,6 +91,8 @@ export function ActiveTask() {
   const originalEta = realtime.etaUpdate?.original ?? task.originalEta;
   const etaReasons = realtime.etaUpdate ? [realtime.etaUpdate.reason] : insight?.etaReasons ?? [];
   const behindPlan = etaMax - originalEta;
+  const onTrack = behindPlan < 3;
+  const WeatherIcon = WEATHER_ICON[task.weather.trim().toLowerCase()] ?? DEFAULT_WEATHER_ICON;
 
   // The persistent Safety strip must never contradict the override banner above it —
   // while a demo/live proximity or safety alert is active, it replaces the matching ambient row.
@@ -111,38 +116,68 @@ export function ActiveTask() {
 
   return (
     <PageContainer>
-      <p className="text-xs font-bold uppercase tracking-widest text-foreground-muted">Active Task · {task.taskId}</p>
-      <h1 className="text-3xl font-black uppercase tracking-tight text-foreground sm:text-4xl">{task.taskType}</h1>
-      <p className="mb-4 text-sm font-bold uppercase tracking-wide text-foreground-muted">Zone {task.zone}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-foreground-muted">Active Task · {task.taskId}</p>
+      <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{task.taskType}</h1>
+      <p className="mb-4 text-sm font-medium text-foreground-muted">Zone {task.zone}</p>
 
       <ProximityAlert alert={proximityAlert} />
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
-          {/* Current ETA — the dominant number on the screen. */}
+          {/* Current ETA — the dominant number on the screen, framed in a status ring. */}
           <Card rounded="lg" tone="dark">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-widest text-line-400">Current ETA</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-line-400">Current ETA</p>
               {behindPlan >= 3 && (
-                <span className="rounded-industrial bg-warn-500 px-2 py-1 text-xs font-black uppercase tracking-wide text-ink-950">
-                  +{behindPlan} min
+                <span className="rounded-full bg-warn-500 px-2.5 py-1 text-xs font-semibold text-ink-950">
+                  +{behindPlan} min behind plan
                 </span>
               )}
             </div>
-            <div className="text-6xl font-black tabular-nums leading-none sm:text-7xl">
-              {etaMin === etaMax ? etaMin : `${etaMin}–${etaMax}`}
-              <span className="ml-2 text-xl font-bold text-line-400">min</span>
+
+            <div className="mt-4 flex flex-col items-center gap-1 py-2 sm:flex-row sm:items-center sm:justify-center sm:gap-8">
+              <div className="relative flex h-40 w-40 shrink-0 items-center justify-center">
+                <svg width="160" height="160" viewBox="0 0 160 160" className={onTrack ? "animate-soft-glow" : ""}>
+                  <circle cx="80" cy="80" r="70" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="10" />
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    fill="none"
+                    stroke={onTrack ? "var(--color-teal-500)" : "var(--color-warn-500)"}
+                    strokeWidth="10"
+                    strokeLinecap="round"
+                    strokeDasharray="440"
+                    strokeDashoffset="18"
+                    transform="rotate(-90 80 80)"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="font-display text-4xl font-semibold tabular-nums leading-none text-white">
+                    {etaMin === etaMax ? etaMin : `${etaMin}–${etaMax}`}
+                  </span>
+                  <span className="mt-1 text-xs font-medium text-line-400">min remaining</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-2 sm:items-start">
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${
+                    onTrack ? "bg-teal-500/15 text-teal-400" : "bg-warn-500/15 text-brand-400"
+                  }`}
+                >
+                  <span className={`h-2 w-2 rounded-full ${onTrack ? "bg-teal-400" : "bg-brand-400"}`} aria-hidden />
+                  {onTrack ? "On track" : "Running behind"}
+                </span>
+                <p className="text-sm font-medium text-line-400">Original {originalEta} min</p>
+              </div>
             </div>
-            <p className="mt-2 text-sm font-semibold text-line-400">Original {originalEta} min</p>
 
             {etaReasons.length > 0 && (
-              <details className="mt-4 border-t border-ink-800 pt-3">
-                <summary className="cursor-pointer text-sm font-black uppercase tracking-wide text-brand-500">
-                  Why?
-                </summary>
+              <details className="mt-4 border-t border-white/10 pt-3">
+                <summary className="cursor-pointer text-sm font-semibold text-brand-500">Why?</summary>
                 <ul className="mt-2 space-y-1 pl-1 text-sm text-line-300">
                   {etaReasons.map((reason) => (
-                    <li key={reason}>• {reason}</li>
+                    <li key={reason}>· {reason}</li>
                   ))}
                 </ul>
               </details>
@@ -151,17 +186,27 @@ export function ActiveTask() {
 
           {trainingRecommendation && <TrainingRecommendationCard recommendation={trainingRecommendation} />}
 
+          {/* Live telemetry — only rendered once a real feed supplies it; never a placeholder number. */}
+          {telemetry && (
+            <div className="grid grid-cols-3 gap-3">
+              <TelemetryTile icon={FuelIcon} label="Fuel used" value={`${telemetry.fuel}L`} />
+              <TelemetryTile icon={GaugeIcon} label="Avg cycle" value={telemetry.cycleTime ? `${telemetry.cycleTime}s` : "–"} />
+              <TelemetryTile icon={ClockIcon} label="Idle time" value={`${telemetry.idle}m`} />
+            </div>
+          )}
+
           {/* Progress */}
           <Card rounded="lg">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-foreground-muted">Buckets remaining</p>
-                <p className="text-5xl font-black tabular-nums leading-none text-foreground">{task.bucketsRemaining}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground-muted">Buckets remaining</p>
+                <p className="font-display text-5xl font-semibold tabular-nums leading-none text-foreground">{task.bucketsRemaining}</p>
               </div>
               <div className="text-right">
-                {insight && <p className="text-sm font-semibold text-foreground-muted">Approx. {insight.approxTrucksRemaining} trucks</p>}
-                <p className="text-sm font-semibold text-foreground-muted">
-                  {weatherGlyph(task.weather)} {task.weather}
+                {insight && <p className="text-sm font-medium text-foreground-muted">Approx. {insight.approxTrucksRemaining} trucks</p>}
+                <p className="flex items-center justify-end gap-1.5 text-sm font-medium text-foreground-muted">
+                  <WeatherIcon className="h-4 w-4 shrink-0" aria-hidden />
+                  {task.weather}
                 </p>
               </div>
             </div>
@@ -169,7 +214,7 @@ export function ActiveTask() {
 
           {/* Actions */}
           <Card rounded="lg">
-            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-foreground-muted">Report</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-foreground-muted">Report</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Button
                 variant="secondary"
@@ -195,10 +240,11 @@ export function ActiveTask() {
 
           <Card>
             <div className="mb-1 flex items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-widest text-foreground-muted">Real-time feed</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground-muted">Real-time feed</p>
               <StatusDot
                 status={realtime.connectionMode === "live" ? "safe" : "warning"}
                 label={realtime.connectionMode === "live" ? "Live" : "Demo mode"}
+                pulse={realtime.connectionMode === "live"}
               />
             </div>
             <p className="mb-3 text-xs font-medium text-foreground-muted">
@@ -229,5 +275,15 @@ export function ActiveTask() {
         />
       )}
     </PageContainer>
+  );
+}
+
+function TelemetryTile({ icon: Icon, label, value }: { icon: typeof FuelIcon; label: string; value: string }) {
+  return (
+    <Card className="flex flex-col gap-1.5">
+      <Icon className="h-4 w-4 text-brand-500" aria-hidden />
+      <span className="font-display text-lg font-semibold tabular-nums text-foreground">{value}</span>
+      <span className="text-xs font-medium text-foreground-muted">{label}</span>
+    </Card>
   );
 }

@@ -17,8 +17,8 @@ export function OperatorTwinCard({ twin }: { twin: OperatorInsight }) {
         <Metric label="Rain sensitivity" value={twin.rainSensitivity.toFixed(2)} />
       </div>
       <div className="mt-4">
-        <p className="text-xs font-bold uppercase tracking-widest text-foreground-muted">Pattern</p>
-        <p className="mt-1 text-sm font-semibold leading-snug text-foreground">{capitalize(twin.fatiguePattern)}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground-muted">Pattern</p>
+        <p className="mt-1 text-sm font-medium leading-snug text-foreground">{capitalize(twin.fatiguePattern)}</p>
       </div>
     </Card>
   );
@@ -27,8 +27,8 @@ export function OperatorTwinCard({ twin }: { twin: OperatorInsight }) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-xs font-bold uppercase tracking-widest text-foreground-muted">{label}</p>
-      <p className="truncate text-xl font-black leading-tight text-foreground sm:text-2xl">{value}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground-muted">{label}</p>
+      <p className="font-display truncate text-xl font-semibold leading-tight text-foreground sm:text-2xl">{value}</p>
     </div>
   );
 }

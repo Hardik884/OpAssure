@@ -1,11 +1,11 @@
 /**
  * One Mission Board row. `variant="primary"` is the current/startable task —
- * visually prominent with a full START TASK action; `variant="secondary"` is a
- * later task with a lighter VIEW action. Same data shape either way (MissionTask).
+ * visually prominent with a full Start Task action; `variant="secondary"` is a
+ * later task with a lighter View action. Same data shape either way (MissionTask).
  */
 import type { ReactNode } from "react";
 
-import { riskToStatus, weatherGlyph } from "@/lib/format";
+import { DEFAULT_WEATHER_ICON, riskToStatus, WEATHER_ICON } from "@/lib/format";
 import type { MissionTask } from "@/types";
 
 import { Button, Card, StatusBadge } from "../common/ui";
@@ -19,33 +19,38 @@ interface TaskCardProps {
 
 export function TaskCard({ task, variant, onStart, onView }: TaskCardProps) {
   const isPrimary = variant === "primary";
+  const WeatherIcon = WEATHER_ICON[task.weather.trim().toLowerCase()] ?? DEFAULT_WEATHER_ICON;
 
   return (
-    <Card rounded="lg" className={isPrimary ? "relative overflow-hidden pl-6 sm:pl-7" : ""} data-testid={`task-card-${task.taskId}`}>
-      {isPrimary && <span className="absolute inset-y-0 left-0 w-2 bg-brand-500" aria-hidden />}
+    <Card rounded="lg" tone={isPrimary ? "dark" : "light"} data-testid={`task-card-${task.taskId}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Badge>{task.taskId}</Badge>
-          <span className="text-sm font-bold tabular-nums text-foreground-muted">{task.startTime}</span>
+          <Badge dark={isPrimary}>{task.taskId}</Badge>
+          <span className={`text-sm font-semibold tabular-nums ${isPrimary ? "text-line-400" : "text-foreground-muted"}`}>
+            {task.startTime}
+          </span>
         </div>
         <StatusBadge status={riskToStatus(task.riskLevel)}>{task.riskLevel} risk</StatusBadge>
       </div>
 
-      <h3 className={`mt-2 font-black uppercase tracking-tight text-foreground ${isPrimary ? "text-2xl sm:text-3xl" : "text-lg"}`}>
+      <h3 className={`mt-2.5 font-display font-semibold tracking-tight ${isPrimary ? "text-2xl sm:text-3xl" : "text-lg text-foreground"}`}>
         {task.taskType}
       </h3>
-      <p className="text-sm font-bold uppercase tracking-wide text-foreground-muted">Zone {task.zone}</p>
+      <p className={`text-sm font-medium ${isPrimary ? "text-line-400" : "text-foreground-muted"}`}>Zone {task.zone}</p>
 
       <div className={`mt-4 flex flex-wrap items-end justify-between gap-3 ${isPrimary ? "" : "mt-3"}`}>
         <div>
-          <div className="text-xs font-bold uppercase tracking-widest text-foreground-muted">ETA</div>
-          <div className={`font-black tabular-nums leading-none text-foreground ${isPrimary ? "text-4xl sm:text-5xl" : "text-2xl"}`}>
+          <div className={`text-xs font-semibold uppercase tracking-[0.1em] ${isPrimary ? "text-line-400" : "text-foreground-muted"}`}>
+            ETA
+          </div>
+          <div className={`font-display font-semibold tabular-nums leading-none ${isPrimary ? "text-4xl sm:text-5xl" : "text-2xl text-foreground"}`}>
             {task.etaMin === task.etaMax ? task.etaMin : `${task.etaMin}–${task.etaMax}`}
-            <span className="ml-1 text-sm font-bold text-foreground-muted">min</span>
+            <span className={`ml-1 text-sm font-medium ${isPrimary ? "text-line-400" : "text-foreground-muted"}`}>min</span>
           </div>
         </div>
-        <div className="text-sm font-semibold text-foreground-muted">
-          {weatherGlyph(task.weather)} {task.weather}
+        <div className={`flex items-center gap-1.5 text-sm font-medium ${isPrimary ? "text-line-300" : "text-foreground-muted"}`}>
+          <WeatherIcon className="h-4 w-4 shrink-0" aria-hidden />
+          {task.weather}
         </div>
       </div>
 
@@ -63,9 +68,13 @@ export function TaskCard({ task, variant, onStart, onView }: TaskCardProps) {
 }
 
 /** A subtle badge used for the task-id chip — reuses StatusBadge's visual weight without a status color. */
-function Badge({ children }: { children: ReactNode }) {
+function Badge({ children, dark = false }: { children: ReactNode; dark?: boolean }) {
   return (
-    <span className="inline-flex items-center rounded-industrial bg-ink-950 px-2 py-1 text-sm font-bold text-white">
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+        dark ? "bg-white/10 text-white" : "bg-ink-950 text-white"
+      }`}
+    >
       {children}
     </span>
   );

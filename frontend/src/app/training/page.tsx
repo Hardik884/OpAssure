@@ -11,7 +11,7 @@ import { TrainingRecommendationCard } from "@/components/training/TrainingRecomm
 import { useTrainingLibrary } from "@/hooks/useTrainingLibrary";
 import { useTrainingRecommendation } from "@/hooks/useTrainingRecommendation";
 
-import { Card, Empty, ErrorNote, PageContainer, SectionHeader } from "@/components/common/ui";
+import { Card, Empty, ErrorNote, PageContainer, PageTitle, SectionHeader } from "@/components/common/ui";
 
 export default function TrainingPage() {
   const { recommendation, loading: recommendationLoading } = useTrainingRecommendation();
@@ -19,7 +19,7 @@ export default function TrainingPage() {
 
   return (
     <PageContainer>
-      <h1 className="mb-4 text-2xl font-black uppercase tracking-tight text-foreground sm:text-3xl">Training</h1>
+      <PageTitle title="Training" />
 
       {error && <ErrorNote>{error}</ErrorNote>}
 

@@ -10,6 +10,8 @@
  */
 import { useEffect, type ReactNode } from "react";
 
+import { CloseIcon } from "./icons";
+
 export function Modal({
   title,
   children,
@@ -36,23 +38,23 @@ export function Modal({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-40 flex items-end justify-center bg-ink-950/70 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-40 flex items-end justify-center bg-ink-950/60 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
       onClick={dismissible ? onClose : undefined}
     >
       <div
-        className="max-h-[92vh] w-full overflow-y-auto rounded-t-panel border-t-2 border-border bg-surface p-5 sm:max-w-lg sm:rounded-panel sm:border-2"
+        className="animate-rise-in max-h-[92vh] w-full overflow-y-auto rounded-t-panel border-t border-border bg-surface p-5 sm:max-w-lg sm:rounded-panel sm:border"
         onClick={(e) => e.stopPropagation()}
       >
         {(title || (dismissible && onClose)) && (
           <div className="mb-3 flex items-center justify-between gap-3">
-            {title && <h2 className="text-lg font-black uppercase tracking-wide text-foreground">{title}</h2>}
+            {title && <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">{title}</h2>}
             {dismissible && onClose && (
               <button
                 onClick={onClose}
                 aria-label="Close"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-industrial text-2xl font-bold text-foreground-muted hover:bg-surface-muted hover:text-foreground"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-industrial text-foreground-muted hover:bg-surface-muted hover:text-foreground"
               >
-                ✕
+                <CloseIcon className="h-5 w-5" aria-hidden />
               </button>
             )}
           </div>

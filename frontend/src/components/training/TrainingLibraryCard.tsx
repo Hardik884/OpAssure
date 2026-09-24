@@ -20,11 +20,11 @@ export function TrainingLibraryCard({ clip }: { clip: TrainingClip }) {
 
   return (
     <Card>
-      <p className="text-xs font-bold uppercase tracking-widest text-foreground-muted">{clip.category}</p>
-      <h3 className="mt-1 text-lg font-black uppercase tracking-tight text-foreground">{clip.title}</h3>
+      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground-muted">{clip.category}</p>
+      <h3 className="mt-1 font-display text-lg font-semibold tracking-tight text-foreground">{clip.title}</h3>
       <p className="mt-1 text-sm font-medium text-foreground-muted">{clip.description}</p>
       <div className="mt-4 flex items-center justify-between gap-3">
-        <span className="text-xs font-bold uppercase tracking-widest text-foreground-muted">
+        <span className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground-muted">
           {status === "error" ? "Couldn't save — try again" : `${clip.durationMin} min`}
         </span>
         <Button variant="secondary" onClick={watch} disabled={status === "saving" || status === "done"}>

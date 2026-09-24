@@ -14,6 +14,7 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import type { TrainingRecommendation } from "@/types";
 
+import { CloseIcon } from "../common/icons";
 import { Button, Card } from "../common/ui";
 
 interface TrainingRecommendationCardProps {
@@ -36,23 +37,23 @@ export function TrainingRecommendationCard({ recommendation, dismissible = true 
   };
 
   return (
-    <Card rounded="lg" className="border-brand-500" data-testid="training-recommendation">
+    <Card rounded="lg" className="border-brand-500/40" data-testid="training-recommendation">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-600">Recommended {dismissible ? "Now" : "For You"}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-brand-600">Recommended {dismissible ? "now" : "for you"}</p>
         {dismissible && (
           <button
             onClick={() => setDismissed(true)}
             aria-label="Dismiss training recommendation"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-industrial text-lg font-bold text-foreground-muted hover:text-foreground"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-industrial text-foreground-muted hover:text-foreground"
           >
-            ✕
+            <CloseIcon className="h-4 w-4" aria-hidden />
           </button>
         )}
       </div>
-      <h3 className="mt-1 text-xl font-black uppercase tracking-tight text-foreground">{recommendation.title}</h3>
-      <p className="mt-1 text-sm font-semibold text-foreground-muted">Why: {recommendation.reason}</p>
+      <h3 className="mt-1 font-display text-xl font-semibold tracking-tight text-foreground">{recommendation.title}</h3>
+      <p className="mt-1 text-sm font-medium text-foreground-muted">Why: {recommendation.reason}</p>
       <div className="mt-4 flex items-center justify-between gap-3">
-        <span className="text-xs font-bold uppercase tracking-widest text-foreground-muted">
+        <span className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground-muted">
           {status === "error" ? "Couldn't save — try again" : `${recommendation.durationMin} min`}
         </span>
         <Button variant="primary" onClick={watch} disabled={status === "saving" || status === "done"}>

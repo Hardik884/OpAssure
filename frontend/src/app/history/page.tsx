@@ -2,7 +2,7 @@
 
 /** Today's completed activity — operational and glanceable, not an analytics dashboard. */
 import { HistoryEntryCard } from "@/components/history/HistoryEntryCard";
-import { Card, Empty, ErrorNote, PageContainer, SectionHeader } from "@/components/common/ui";
+import { Card, Empty, ErrorNote, PageContainer, PageTitle, SectionHeader } from "@/components/common/ui";
 import { useTaskHistory } from "@/hooks/useTaskHistory";
 
 export default function HistoryPage() {
@@ -10,7 +10,7 @@ export default function HistoryPage() {
 
   return (
     <PageContainer>
-      <h1 className="mb-4 text-2xl font-black uppercase tracking-tight text-foreground sm:text-3xl">History</h1>
+      <PageTitle title="History" />
 
       <SectionHeader title="Today's activity" />
 

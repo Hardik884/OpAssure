@@ -1,67 +1,69 @@
 @import "tailwindcss";
 
 /*
- * OpAssure design tokens — industrial CAT-style palette.
- * Semantics are functional, not decorative:
- *   brand (yellow)  -> accent / primary action only
- *   ink (near-black) -> dark surfaces, nav, strong text
- *   surface (white)  -> primary content surfaces
- *   line (gray)      -> secondary surfaces, borders, metadata
- *   safe / warn / critical -> status ONLY, never used for branding/decoration
+ * OpAssure design tokens — industrial-modern, not corporate SaaS.
+ * Graphite ground with amber (primary/caution) + signal-teal (data/secondary)
+ * accents — construction-site cues without reproducing CAT's own yellow.
+ * Semantics are functional, never decorative:
+ *   brand (amber)     -> primary action / accent only
+ *   teal              -> secondary accent, telemetry / data moments
+ *   ink (graphite)     -> dark surfaces, header, nav
+ *   surface (ivory/wht) -> light-mode content surfaces
+ *   line (warm gray)   -> secondary surfaces, hairline borders, metadata
+ *   safe / warn / critical -> status ONLY, never branding/decoration
  */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  --color-brand-400: #ffd84d;
-  --color-brand-500: #ffc220; /* primary CAT-style yellow */
-  --color-brand-600: #e6a800;
-  --color-brand-700: #b58200;
+  --color-brand-400: #ffc35c;
+  --color-brand-500: #ffb020; /* primary amber accent */
+  --color-brand-600: #dd9110;
+  --color-brand-700: #b3740a;
 
-  --color-ink-950: #0a0a0a;
-  --color-ink-900: #121212;
-  --color-ink-800: #1c1c1c;
-  --color-ink-700: #2a2a2a;
-  --color-ink-600: #3d3d3d;
+  --color-teal-400: #5fe4d1;
+  --color-teal-500: #2fd4c0; /* secondary accent — telemetry / live data */
+  --color-teal-600: #1fae9d;
 
-  --color-line-100: #f4f4f5;
-  --color-line-200: #e4e4e7;
-  --color-line-300: #d4d4d8;
-  --color-line-400: #a1a1aa;
-  --color-line-500: #71717a;
-  --color-line-600: #52525b;
+  --color-ink-950: #101317;
+  --color-ink-900: #14171b;
+  --color-ink-800: #1b1f24;
+  --color-ink-700: #242930;
+  --color-ink-600: #343b43;
 
-  --color-safe-500: #1a8a3e;
-  --color-safe-600: #146b30;
-  --color-safe-bg: #e7f6ec;
+  --color-line-100: #f6f4ef;
+  --color-line-200: #ece8e0;
+  --color-line-300: #d9d3c7;
+  --color-line-400: #a7a096;
+  --color-line-500: #7c766d;
+  --color-line-600: #59544d;
 
-  --color-warn-500: #e6a100;
-  --color-warn-600: #b87f00;
-  --color-warn-bg: #fff4d9;
+  --color-safe-500: #2fb87e;
+  --color-safe-600: #229266;
+  --color-safe-bg: #e4f7ee;
 
-  --color-critical-500: #d61f26;
-  --color-critical-600: #ad181d;
-  --color-critical-bg: #fde8e8;
+  --color-warn-500: #ffb020;
+  --color-warn-600: #dd9110;
+  --color-warn-bg: #fff3de;
 
-  --radius-industrial: 0.25rem;
-  /* A touch more roundness for larger surfaces (hero cards, modals) — still flat/bordered,
-     never a soft floating look. Small chips/badges keep --radius-industrial. */
-  --radius-panel: 0.75rem;
+  --color-critical-500: #ec5850;
+  --color-critical-600: #d6423b;
+  --color-critical-bg: #fce9e8;
+
+  /* Soft, elegant radii — never the sharp/boxed "instrument panel" look. */
+  --radius-industrial: 0.75rem; /* chips, buttons, small controls */
+  --radius-panel: 1.25rem; /* hero surfaces — ETA card, modals */
 }
 
 /*
- * Semantic theme tokens. Components should read these (bg-background, bg-surface,
- * text-foreground, text-foreground-muted, border-border, bg-accent, ...) instead of
- * hardcoding ink/line literals directly, so light/dark mode is a single switch here
- * rather than a per-component decision.
+ * Semantic theme tokens. Components read these (bg-background, bg-surface,
+ * text-foreground, text-foreground-muted, border-border, bg-accent, ...)
+ * instead of hardcoding ink/line literals, so light/dark mode is one switch.
  *
- * Light values below are chosen to match the app's existing, already-approved
- * light-mode appearance exactly. Dark values are a deliberate industrial dark
- * interface reusing the same ink/line ramp already defined above — no new hex
- * colors — never a naive inversion of the light theme.
- *
- * Status colors (safe/warn/critical) get their OWN semantic pair so a safety
- * severity chip stays a solid, unambiguous block in both themes — never washed
- * out by the general dark surface treatment.
+ * Dark is graphite-first — the operator's actual working theme (glare/outdoor
+ * cab use). Light is a warm ivory paper, not stark white, keeping the same
+ * amber/teal accents. Status colors keep their own semantic pair so a safety
+ * chip stays a solid, unambiguous block in both themes.
  */
 @theme inline {
   --color-background: var(--background);
@@ -85,11 +87,11 @@
   color-scheme: light;
 
   --background: var(--color-line-100);
-  --surface: #ffffff;
-  --surface-muted: var(--color-line-100);
+  --surface: #fffdf9;
+  --surface-muted: var(--color-line-200);
   --foreground: var(--color-ink-950);
-  --foreground-muted: var(--color-ink-700);
-  --border: var(--color-ink-950);
+  --foreground-muted: var(--color-line-600);
+  --border: var(--color-line-300);
 
   --status-safe-bg: var(--color-safe-bg);
   --status-safe-fg: var(--color-safe-600);
@@ -112,15 +114,15 @@
   --surface-muted: var(--color-ink-700);
   --foreground: var(--color-line-100);
   --foreground-muted: var(--color-line-400);
-  --border: var(--color-ink-600);
+  --border: rgba(255, 255, 255, 0.09);
 
   /* Solid, saturated blocks — not pastel-on-dark — so a critical alert is never ambiguous. */
-  --status-safe-bg: var(--color-safe-600);
-  --status-safe-fg: #ffffff;
-  --status-warn-bg: var(--color-warn-600);
-  --status-warn-fg: var(--color-ink-950);
-  --status-critical-bg: var(--color-critical-600);
-  --status-critical-fg: #ffffff;
+  --status-safe-bg: rgba(47, 184, 126, 0.16);
+  --status-safe-fg: #4be3a4;
+  --status-warn-bg: rgba(255, 176, 32, 0.14);
+  --status-warn-fg: var(--color-brand-400);
+  --status-critical-bg: rgba(236, 88, 80, 0.16);
+  --status-critical-fg: #ff8b84;
 }
 
 html,
@@ -140,4 +142,79 @@ button,
 select,
 input {
   font: inherit;
+}
+
+/* ---------------------------------------------------------------- motion ----
+ * Kept deliberately light: a live-data pulse, a soft entrance, a glow behind
+ * the ETA ring, an outward radar ping on a critical alert. Never decorative —
+ * every animation here carries a meaning (live, new, urgent). Respects
+ * prefers-reduced-motion globally.
+ */
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes soft-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(47, 212, 192, 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(47, 212, 192, 0.45));
+  }
+}
+
+@keyframes radar-ping {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-live-pulse {
+  animation: live-pulse 2.2s ease-in-out infinite;
+}
+
+.animate-soft-glow {
+  animation: soft-glow 3.6s ease-in-out infinite;
+}
+
+.animate-radar-ping {
+  animation: radar-ping 1.8s ease-out infinite;
+}
+
+.animate-rise-in {
+  animation: rise-in 0.35s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-live-pulse,
+  .animate-soft-glow,
+  .animate-radar-ping,
+  .animate-rise-in {
+    animation: none !important;
+  }
 }

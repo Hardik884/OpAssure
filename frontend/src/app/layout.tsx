@@ -1,10 +1,27 @@
 import type { Metadata, Viewport } from "next";
+import { Manrope, Space_Grotesk } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/AppShell";
 import { THEME_ANTI_FLASH_SCRIPT } from "@/components/layout/ThemeProvider";
 
 import "./globals.css";
+
+// Distinctive display/body pairing — deliberately not Inter/Roboto/Arial.
+// Space Grotesk carries headlines and big numbers; Manrope carries body copy.
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+});
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-manrope",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "OpAssure",
@@ -24,17 +41,17 @@ export const metadata: Metadata = {
   },
 };
 
-// Outdoor/tablet use: no pinch-zoom surprises, matches the OS chrome to our dark header.
+// Outdoor/tablet use: no pinch-zoom surprises, matches the OS chrome to our graphite header.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#0a0a0a",
+  themeColor: "#101317",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${spaceGrotesk.variable} ${manrope.variable}`}>
       <head>
         {/* Sets data-theme before hydration so a stored dark preference never flashes light first. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_ANTI_FLASH_SCRIPT }} />

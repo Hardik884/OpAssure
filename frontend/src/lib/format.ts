@@ -1,4 +1,5 @@
 /** Small presentation-only helpers shared across Mission/Task/Safety components. */
+import { CloudIcon, RainIcon, StormIcon, SunIcon } from "@/components/common/icons";
 import type { RiskLevel, SafetyStatus } from "@/types";
 
 /** Maps the frozen Task.riskLevel onto the shared safe/warning/critical badge semantics. */
@@ -8,14 +9,13 @@ export function riskToStatus(risk: RiskLevel): SafetyStatus {
   return "safe";
 }
 
-const WEATHER_GLYPH: Record<string, string> = {
-  rainy: "🌧", cloudy: "☁", clear: "☀", sunny: "☀", storm: "⛈",
+/** Weather -> icon lookup. Indexed directly at call sites (never invoked as a factory) so each
+ * icon stays the same stable component reference across renders. */
+export const WEATHER_ICON: Record<string, typeof SunIcon> = {
+  rainy: RainIcon, cloudy: CloudIcon, clear: SunIcon, sunny: SunIcon, storm: StormIcon,
 };
 
-/** A tiny glyph for a weather label — decorative only, always paired with the text. */
-export function weatherGlyph(weather: string): string {
-  return WEATHER_GLYPH[weather.trim().toLowerCase()] ?? "•";
-}
+export const DEFAULT_WEATHER_ICON = SunIcon;
 
 /** Time-of-day greeting for the Mission Board header. */
 export function getGreeting(date: Date = new Date()): string {
