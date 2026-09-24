@@ -11,6 +11,7 @@
  */
 import { useState } from "react";
 
+import { api } from "@/lib/api";
 import type { TrainingRecommendation } from "@/types";
 
 import { Button, Card } from "../common/ui";
@@ -23,7 +24,16 @@ interface TrainingRecommendationCardProps {
 
 export function TrainingRecommendationCard({ recommendation, dismissible = true }: TrainingRecommendationCardProps) {
   const [dismissed, setDismissed] = useState(false);
+  const [status, setStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
   if (dismissed) return null;
+
+  const watch = () => {
+    setStatus("saving");
+    api
+      .completeTraining(recommendation.clipId)
+      .then(() => setStatus("done"))
+      .catch(() => setStatus("error"));
+  };
 
   return (
     <Card rounded="lg" className="border-brand-500" data-testid="training-recommendation">
@@ -43,9 +53,11 @@ export function TrainingRecommendationCard({ recommendation, dismissible = true 
       <p className="mt-1 text-sm font-semibold text-foreground-muted">Why: {recommendation.reason}</p>
       <div className="mt-4 flex items-center justify-between gap-3">
         <span className="text-xs font-bold uppercase tracking-widest text-foreground-muted">
-          {recommendation.durationMin} min
+          {status === "error" ? "Couldn't save — try again" : `${recommendation.durationMin} min`}
         </span>
-        <Button variant="primary">{dismissible ? "Watch Now" : "Watch Clip"}</Button>
+        <Button variant="primary" onClick={watch} disabled={status === "saving" || status === "done"}>
+          {status === "done" ? "Watched" : status === "saving" ? "Saving…" : dismissible ? "Watch Now" : "Watch Clip"}
+        </Button>
       </div>
     </Card>
   );

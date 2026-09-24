@@ -104,7 +104,10 @@ function TaskDetail({ task }: { task: MissionTask }) {
       <Row label="Start time" value={task.startTime} />
       <Row label="Zone" value={`Zone ${task.zone}`} />
       <Row label="Weather" value={task.weather} />
-      <Row label="ETA range" value={`${task.etaMin}–${task.etaMax} min`} />
+      <Row
+        label={task.etaMin === task.etaMax ? "Plan ETA" : "ETA range"}
+        value={task.etaMin === task.etaMax ? `${task.etaMin} min` : `${task.etaMin}–${task.etaMax} min`}
+      />
       <Row label="Plan estimate" value={`${task.originalEta} min`} />
       <Row label="Buckets remaining" value={String(task.bucketsRemaining)} />
       <Row label="Risk level" value={task.riskLevel[0].toUpperCase() + task.riskLevel.slice(1)} />

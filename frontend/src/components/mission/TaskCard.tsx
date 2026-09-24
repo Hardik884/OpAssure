@@ -40,7 +40,7 @@ export function TaskCard({ task, variant, onStart, onView }: TaskCardProps) {
         <div>
           <div className="text-xs font-bold uppercase tracking-widest text-foreground-muted">ETA</div>
           <div className={`font-black tabular-nums leading-none text-foreground ${isPrimary ? "text-4xl sm:text-5xl" : "text-2xl"}`}>
-            {task.etaMin}–{task.etaMax}
+            {task.etaMin === task.etaMax ? task.etaMin : `${task.etaMin}–${task.etaMax}`}
             <span className="ml-1 text-sm font-bold text-foreground-muted">min</span>
           </div>
         </div>

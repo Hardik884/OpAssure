@@ -12,10 +12,13 @@ export function OperatorTwinCard({ twin }: { twin: OperatorInsight }) {
   return (
     <Card rounded="lg">
       <SectionHeader title="Operator Twin" action={<StatusBadge status={riskToStatus(twin.riskLevel)}>{twin.riskLevel} risk</StatusBadge>} />
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4">
         <Metric label="Pace" value={twin.paceFactor.toFixed(2)} />
         <Metric label="Rain sensitivity" value={twin.rainSensitivity.toFixed(2)} />
-        <Metric label="Pattern" value={capitalize(twin.fatiguePattern)} />
+      </div>
+      <div className="mt-4">
+        <p className="text-xs font-bold uppercase tracking-widest text-foreground-muted">Pattern</p>
+        <p className="mt-1 text-sm font-semibold leading-snug text-foreground">{capitalize(twin.fatiguePattern)}</p>
       </div>
     </Card>
   );
@@ -23,9 +26,9 @@ export function OperatorTwinCard({ twin }: { twin: OperatorInsight }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs font-bold uppercase tracking-widest text-foreground-muted">{label}</p>
-      <p className="text-xl font-black leading-tight text-foreground sm:text-2xl">{value}</p>
+      <p className="truncate text-xl font-black leading-tight text-foreground sm:text-2xl">{value}</p>
     </div>
   );
 }

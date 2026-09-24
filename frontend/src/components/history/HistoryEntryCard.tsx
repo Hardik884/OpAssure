@@ -19,7 +19,7 @@ export function HistoryEntryCard({ entry }: { entry: HistoryEntry }) {
       <div className="flex items-center gap-4">
         <div className="text-right">
           <p className="text-lg font-black tabular-nums leading-none text-foreground">
-            {entry.etaMin}–{entry.etaMax}
+            {entry.etaMin === entry.etaMax ? entry.etaMin : `${entry.etaMin}–${entry.etaMax}`}
             <span className="ml-1 text-xs font-bold text-foreground-muted">min</span>
           </p>
           <p className="text-xs font-semibold text-foreground-muted">

@@ -150,6 +150,11 @@ interface RecommendationsOut {
   recommendations: RecommendationOut[];
 }
 
+/** POST /training/complete response — only `created` is used (rest is server bookkeeping). */
+interface TrainingCompleteOut {
+  created: boolean;
+}
+
 /** One factor in an ETA/twin/risk explanation ({@link build_eta_explanation} etc. in ml/). */
 interface MlFactor {
   name: string;
@@ -506,6 +511,19 @@ export const api = {
   /** Mock instructor booking slots — intentionally not a real scheduling system. */
   getInstructorSlots(): Promise<InstructorSlot[]> {
     return mockResolve(mockInstructorSlots);
+  },
+
+  /** Record that the operator watched a training clip (Training Hub "Watch" actions). */
+  async completeTraining(clipId: string): Promise<void> {
+    if (USE_MOCK_DATA) {
+      await mockResolve(undefined);
+      return;
+    }
+    await request<TrainingCompleteOut>("/training/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ operator_id: DEMO_OPERATOR_ID, clip_id: clipId }),
+    });
   },
 
   /** Habit Radar — system-detected behavioural patterns, glanceable only. */

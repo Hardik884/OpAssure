@@ -13,9 +13,9 @@ export function HabitRadarCard({ habits }: { habits: HabitRadarItem[] }) {
       <ul className="space-y-3">
         {habits.map((habit) => (
           <li key={habit.id} className="flex items-center justify-between gap-3">
-            <span className="text-sm font-semibold text-foreground">{habit.label}</span>
+            <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground">{habit.label}</span>
             <span
-              className={`inline-flex items-center gap-1.5 rounded-industrial px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-industrial px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${
                 habit.status === "Detected" ? "bg-status-warn-bg text-status-warn-fg" : "bg-status-safe-bg text-status-safe-fg"
               }`}
             >

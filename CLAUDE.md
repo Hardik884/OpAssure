@@ -287,9 +287,9 @@ advanced TimescaleDB optimization, sophisticated animation, advanced LLM integra
 
 ## 15. Branching
 
-- `main` — stable, demo-ready code.
-- `develop` — integration branch; open pull requests into `develop`.
-- Feature branches (e.g. `feature/frontend-mission-board`) branch off `develop`.
+- `main` — the working branch; commit and push directly to `main`, no PR required.
+- `develop` — integration branch, kept for reference; no longer the required PR target.
+- Feature branches (e.g. `feature/frontend-mission-board`) are optional.
 
 ## 16. Skills
 
