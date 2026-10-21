@@ -1,14 +1,9 @@
 # Carbon Emission Hotspot Monitor — MVP Plan
 
-Status: **plan only, no code written yet.** Waiting for your answers to §9.
+Status: **plan updated with your decisions (§9); no application code written yet.**
 
-Sources read in full: `emission-hotspot-dashboard.html` (prototype, all 668 lines) and
-`ISPRS_Research_Paper.pdf` (all 32 pages).
-
-Paper: R. Y. Sonawane & S. Murugavelh, *"AI-Driven Climate Intelligence: Spatio-Temporal
-Framework for Carbon Emission Hotspot Detection and Prediction"* (VIT Vellore). The PDF has
-no venue/year/DOI on its pages, so the README citation will say "preprint" unless you give
-me the details.
+Reference input: the single-file browser prototype `emission-hotspot-dashboard.html`. Its
+`<script>` is the behaviour spec; the MVP ports it rather than reinventing it.
 
 ---
 
@@ -24,19 +19,16 @@ A web app where a user enters a place or `lat, lon`, and a background job:
 4. Stores everything in Postgres/PostGIS, serves it over a REST API, and a React/MapLibre
    frontend renders the map, inspector, charts and tables. `/r/<id>` loads a cached analysis.
 
-### Prototype vs paper (MVP follows the prototype; paper = later upgrade)
+### Deliberate MVP scope, and later upgrades
 
-| Area | Prototype (MVP) | Paper (later) |
+| Area | MVP (ported from the prototype) | Later upgrade |
 |---|---|---|
-| Gas source | CAMS global via Open-Meteo (~0.4°, ~45 km) | TROPOMI L2 at 3.5×5.5 km → stub behind `ENABLE_TROPOMI` |
-| Compositing | Daily means (≥4 valid hours) | Monthly pixel-wise median |
-| Classes | k-means on cell-month CEI | k-means labels **train** a SegFormer-B4; classes come from the net |
-| Forecaster | 1-layer BiLSTM, 16 units, direct 30-day output | 2-layer BiLSTM, 128 units, LayerNorm, AdamW, 24→12 months |
-| Inputs | CEI + sin/cos(day-of-year) | 13 channels (gases, 5 ERA5 vars, 3 land-use, CEI) |
-| Attribution | Exact Shapley of the linear CEI vs regional mean | DeepSHAP on the network |
-| Masking / validation | none | FIRMS fire mask, CARB/EDGAR cross-check |
-| Eval | 60-day temporal holdout, all cells | + spatial holdout, "temporal consistency" score |
-| Uncertainty | MC dropout σ | same; paper calls long horizons *scenarios* — UI copy keeps that wording |
+| Gas source | CAMS global via Open-Meteo (~0.4°, ~45 km) | Sentinel-5P TROPOMI L2 (3.5×5.5 km) — stub behind `ENABLE_TROPOMI` |
+| Compositing | Daily means (≥4 valid hours) | Monthly median composites |
+| Classes | k-means on cell-month CEI | A learned segmentation model trained on those k-means labels |
+| Forecaster | 1-layer BiLSTM, 16 units, direct 30-day output | Deeper/wider BiLSTM, extra covariates (ERA5, land use) |
+| Attribution | Exact Shapley of the linear CEI vs regional mean | Model-based SHAP on the forecaster |
+| Quality | MAD clip, Kalman fill, SG smoothing | Wildfire masking, inventory cross-checks |
 
 ---
 
@@ -130,7 +122,7 @@ Errors always `{"error": {"code": "...", "message": "what happened", "hint": "wh
 | Endpoint | Notes |
 |---|---|
 | `GET /api/geocode?q=` | `lat,lon` parsed locally; otherwise Open-Meteo geocoding (cached). Returns up to 5 `{name, lat, lon, admin1, country}`; 404 with a hint if none. |
-| `POST /api/analyses` | Body `{lat, lon, name, radius_km 50–500, grid 3–8, months 6–24, horizon ∈{30,90,180}, weighting ∈{gwp,flat}, epochs}` → `{analysis_id, job_id, reused: bool}`. Reuses a succeeded/partial/running analysis with identical `params_hash` from the last 24 h. Per-IP limit (default 6/hour, env-configurable; in-memory sliding window, honours `X-Forwarded-For` from Render) → 429 + `Retry-After`. |
+| `POST /api/analyses` | Body `{lat, lon, name, radius_km 50–500, grid 3–8, months 6–24, horizon ∈{30,90,180}, weighting ∈{gwp,flat}, epochs}` → `{analysis_id, job_id, reused: bool}`. Reuses a succeeded/partial/running analysis with identical `params_hash` from the last 24 h. Per-IP limit (default 6/hour, env-configurable; in-memory sliding window, honours `X-Forwarded-For` behind Render's proxy) → 429 + `Retry-After`. |
 | `GET /api/jobs/{id}` | `{status, step, progress, log[], error}` |
 | `GET /api/analyses/{id}` | summary, k-means thresholds, metrics, data-availability notes, gases used, date range, views available (`cams`, `proj`) |
 | `GET /api/analyses/{id}/map?view=now\|month\|cams\|proj&month=YYYY-MM` | GeoJSON `FeatureCollection`; per feature `{cell_id, class (0–3), class_name, cei, sigma (proj only), top_gas}` + collection-level `legend` counts |
@@ -164,7 +156,7 @@ Field names (`nitrogen_dioxide`, `cei`, `class`, …) are identical in DB, API a
 | weather | 470–477, 645–650 | ERA5 `models=era5` with fallback; precipitation ×24; wind–CEI Pearson r with the ±0.3 wording |
 
 **Python tests**
-- Hand-computed unit tests for every function above (small arrays I can verify on paper; I'll show the arithmetic in the test).
+- Hand-computed unit tests for every function above (small arrays whose answers I can verify by hand; I'll show the arithmetic in the test).
 - Exact-Shapley test: the closed form is compared against brute-force subset enumeration (Eq. 19) to prove it *is* exact for the linear CEI.
 - **JS-parity test**: extract prototype lines 175–283 + 336–349 verbatim into `tests/js_parity/prototype_core.js` (no `tf`/DOM), run with Node on a fixed seeded synthetic input, compare to Python. Preprocessing/CEI/scaling/metrics/baselines/attribution: `atol=1e-9`. k-means: the prototype uses its own mulberry32 RNG while the spec requires sklearn's, so seeds cannot match; on well-separated synthetic data I compare **sorted centroids to atol 1e-6 and identical class assignments**, and say so in the test docstring.
 - Integration tests: FastAPI `TestClient` + real Postgres/PostGIS (service container in CI) + `respx` mocking httpx with recorded fixtures — see §9 Q3 about how fixtures get recorded.
@@ -204,22 +196,18 @@ I commit after each milestone and report what works, what doesn't, and assumptio
 2. **Open-Meteo free-tier limits** (rate and daily weighted quota; also non-commercial terms). 8×8 grid × 24 months is the heavy case. Mitigation: the `api_cache`, 5-point batches as in the prototype, backoff on 429, and a clear error when the daily quota is hit. A deployed app serving the public may need Open-Meteo's commercial plan — I'll note this in DEPLOY.md.
 3. **Methane availability** in `cams_global` history is unverified from here. The prototype's fallback (drop gas, record a note) is ported; I'll also show it in the UI notes panel.
 4. **Scaling leaks the holdout.** The prototype computes robust-z and p2–p98 stats over the *whole* record, including the 60 held-out days. The effect is small but it is mild leakage. MVP preserves this for parity with the prototype and the JS test; I'd document it in the README and the metrics note, and fix it (fit on pre-cutoff days only) as a follow-up.
-5. **Training time/memory on a small instance.** Windows are ~(cells × (T−60−30−60)/3) ≈ 64 × 190 ≈ 12k for the largest run; should fit in ~60 s but unmeasured until M5. PyTorch CPU runtime alone is ~300 MB RSS, which is near Render's 512 MB free/starter limit.
+5. **Training time/memory on a small instance.** Windows are ~(cells × (T−60−30−60)/3) ≈ 64 × 190 ≈ 12k for the largest run; should fit in ~60 s but unmeasured until M5. PyTorch CPU runtime alone is ~300 MB RSS, which is near Render's 512 MB free limit; upgrade the instance first if training OOMs.
 6. **Supabase pooler.** The transaction pooler (port 6543) doesn't support prepared statements → psycopg `prepare_threshold=None`. Alembic migrations need the direct or session-mode connection (separate `DATABASE_URL_MIGRATIONS`). Documented in DEPLOY.md.
-7. **Render free tier:** web services sleep after inactivity (first request ~30–60 s). **Background workers have no free plan.** See Q4.
+7. **Render free tier:** web services sleep after inactivity (first request ~30–60 s) and background workers have no free plan, so the worker runs in the API process (§9.3). First upgrade if needed: a paid worker (~$7/mo) with more RAM.
 8. **CORS for Vercel previews:** "Vercel domain only" means preview URLs (`*-git-branch-*.vercel.app`) will be blocked unless added to `CORS_ORIGINS`. I'll make it an explicit comma-separated env list, no wildcard.
 9. **Prototype oddity (kept):** missing CAMS-forecast values are set to 0 in z-space before CEI (line 490), which biases forecast-view CEI toward the regional median when data is missing. I'll port it and flag in a code comment; changing it is a one-line follow-up.
 
 ---
 
-## 9. Open questions (need your answer before M1)
+## 9. Decisions (from your answers)
 
-1. **Where does this live?** The repo you opened (`hardik884/opassure`) is an unrelated project (CAT machinery operator assistant, with its own `CLAUDE.md`, CI and branching rules). I put this plan in `carbon-hotspot-monitor/` inside it so nothing existing is touched. Do you want that, or a **new, empty repo** (recommended — CI, `render.yaml` and `vercel.json` all want the repo root)? I can't create a repo outside the scoped one without you adding it. I have *not* committed or pushed anything.
-2. **Network access for this session.** Right now outbound calls to `*.open-meteo.com` are denied by the sandbox policy (403 at the proxy), so I could not look at a real API response. Please allow `air-quality-api.open-meteo.com`, `archive-api.open-meteo.com`, `geocoding-api.open-meteo.com` (and `download.pytorch.org` for the CPU wheel, plus Docker Hub if you want me to run `docker compose` here) in the environment's network settings. I haven't checked whether Docker's daemon is usable here either; I'll test that at M1 and tell you.
-3. **Test fixtures.** You asked for *recorded* upstream fixtures. Without Q2 I can't record any, and I won't hand-write fake "recorded" data. If Q2 is granted I record real responses (small windows, committed under `tests/fixtures/`). If not, I'll build clearly named `synthetic_*` fixtures that only match the documented response *shape*, label them as such, and the tests will say so — but then I also can't show you a real-data end-to-end run until you run it yourself.
-4. **Worker hosting.** Render background workers are paid (Starter, ~$7/mo). Options: (a) paid Render worker — matches your spec; (b) run the worker loop inside the free API web service as a background thread — free but jobs die when the service sleeps/restarts and memory is tight; (c) Fly.io/other. **Recommendation:** (a) for the worker, free tier for the API. I'll write `render.yaml` that way unless you say otherwise.
-5. **ML library:** I'll use plain PyTorch (`nn.LSTM(bidirectional=True)`) as specified. Fine?
-6. **Citation details:** do you have the venue/year/DOI for the paper? Otherwise the README says "preprint, VIT Vellore".
-7. **Python version:** you asked for 3.12; the sandbox has 3.13. `uv` can pin 3.12 but may need to download it (also network-dependent). I'll pin 3.12 in `pyproject.toml`/Dockerfile and use whatever works locally for dev.
-
-Stopping here until you've looked at this.
+1. **New repo** — this plan moves to its own repo root (`carbon-hotspot-monitor`). Creating it is currently blocked: the GitHub connector session and `GH_TOKEN` are both invalid in this container. The plan is also temporarily on branch `claude/nice-davinci-akfwn3` of `hardik884/opassure` and will be removed from there once the new repo exists.
+2. **Docker for local dev** — Docker Engine is installed and Docker Hub answers from this sandbox, so the PostGIS container and `docker compose` flow can be run and tested here. Open-Meteo and `download.pytorch.org` are **still blocked**, so: real upstream fixtures cannot be recorded here → tests use clearly named `synthetic_*` fixtures that match the documented response *shape* only, and the CPU-only torch wheel can't be installed from the PyTorch index (I'll try PyPI's wheel; if that fails, the ML tests run on your machine/CI).
+3. **Free tier only** — Render has no free background worker, so the worker loop runs **inside the API process** as a background task (same Dockerfile can still run it as a separate command when you upgrade). Consequences, all documented in DEPLOY.md: jobs stop if the service sleeps or restarts (queued/running jobs are re-claimed on next boot via the stale-heartbeat rule), 512 MB RAM is tight for PyTorch, and the API is slow to wake. The job queue stays Postgres-based so moving to a real worker is a one-line change in `render.yaml`.
+4. **No mention of the reference paper** anywhere in the repo, app UI or README. Footer/README attribution lists only the data and map sources: CAMS/Copernicus, ECMWF ERA5 via Open-Meteo (CC BY 4.0), © OpenStreetMap, © CARTO. The UI option label "Paper: weight × GWP-100" becomes "Weight × GWP-100", and the prototype's "Adapted from…" footnote is not carried over.
+5. **Python version** — pin 3.12 in `pyproject.toml`/Dockerfile; local dev uses whatever works.
